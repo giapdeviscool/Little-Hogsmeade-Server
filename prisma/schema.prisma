@@ -1,0 +1,695 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Branch {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  address   String
+  phone     String
+  email     String?
+  lat       Float
+  lng       Float
+  openTime  DateTime @map("open_time")
+  closeTime DateTime @map("close_time")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  branchConfigs     BranchConfig[]     @relation("BranchConfig_branchId_to_Branch")
+  employees         Employee[]         @relation("Employee_branchId_to_Branch")
+  shifts            Shift[]            @relation("Shift_branchId_to_Branch")
+  categories        Category[]         @relation("Category_branchId_to_Branch")
+  menuItems         MenuItem[]         @relation("MenuItem_branchId_to_Branch")
+  ingredients       Ingredient[]       @relation("Ingredient_branchId_to_Branch")
+  areas             Area[]             @relation("Area_branchId_to_Branch")
+  membershipTiers   MembershipTier[]   @relation("MembershipTier_branchId_to_Branch")
+  loyaltyConfigs    LoyaltyConfig[]    @relation("LoyaltyConfig_branchId_to_Branch")
+  orders            Order[]            @relation("Order_branchId_to_Branch")
+  stockTransactions StockTransaction[] @relation("StockTransaction_branchId_to_Branch")
+  purchaseOrders    PurchaseOrder[]    @relation("PurchaseOrder_branchId_to_Branch")
+  expenses          Expense[]          @relation("Expense_branchId_to_Branch")
+  campaigns         Campaign[]         @relation("Campaign_branchId_to_Branch")
+  pages             Page[]             @relation("Page_branchId_to_Branch")
+  banners           Banner[]           @relation("Banner_branchId_to_Branch")
+  posts             Post[]             @relation("Post_branchId_to_Branch")
+  events            Event[]            @relation("Event_branchId_to_Branch")
+  reservations      Reservation[]      @relation("Reservation_branchId_to_Branch")
+
+  @@map("branches")
+}
+
+model BranchConfig {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  branchId    String @map("branch_id") @db.ObjectId
+  configKey   String @map("config_key")
+  configValue String @map("config_value")
+
+  branch Branch @relation("BranchConfig_branchId_to_Branch", fields: [branchId], references: [id])
+
+  @@map("branch_configs")
+}
+
+model Role {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  name        String @unique
+  permissions Json
+
+  employees Employee[] @relation("Employee_roleId_to_Role")
+
+  @@map("roles")
+}
+
+model Employee {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId     String   @map("branch_id") @db.ObjectId
+  fullName     String   @map("full_name")
+  phone        String   @unique
+  email        String?
+  avatarUrl    String?  @map("avatar_url")
+  roleId       String   @map("role_id") @db.ObjectId
+  hiredDate    DateTime @map("hired_date")
+  status       String   @default("active")
+  pinCode      String   @map("pin_code")
+  passwordHash String?
+
+  branch Branch @relation("Employee_branchId_to_Branch", fields: [branchId], references: [id])
+  role   Role   @relation("Employee_roleId_to_Role", fields: [roleId], references: [id])
+
+  timesheetsEmployeeId Timesheet[]        @relation("Timesheet_employeeId_to_Employee")
+  timesheetsApprovedBy Timesheet[]        @relation("Timesheet_approvedBy_to_Employee")
+  orders               Order[]            @relation("Order_employeeId_to_Employee")
+  deliveryOrders       DeliveryOrder[]    @relation("DeliveryOrder_deliveryEmployeeId_to_Employee")
+  stockTransactions    StockTransaction[] @relation("StockTransaction_employeeId_to_Employee")
+  expenses             Expense[]          @relation("Expense_employeeId_to_Employee")
+  posts                Post[]             @relation("Post_authorId_to_Employee")
+
+  @@map("employees")
+}
+
+model Shift {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId  String   @map("branch_id") @db.ObjectId
+  name      String
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
+
+  branch Branch @relation("Shift_branchId_to_Branch", fields: [branchId], references: [id])
+
+  timesheets Timesheet[] @relation("Timesheet_shiftId_to_Shift")
+
+  @@map("shifts")
+}
+
+model Timesheet {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId String    @map("employee_id") @db.ObjectId
+  shiftId    String    @map("shift_id") @db.ObjectId
+  date       DateTime
+  checkIn    DateTime? @map("check_in")
+  checkOut   DateTime? @map("check_out")
+  note       String?
+  approvedBy String    @map("approved_by") @db.ObjectId
+
+  employee           Employee @relation("Timesheet_employeeId_to_Employee", fields: [employeeId], references: [id])
+  shift              Shift    @relation("Timesheet_shiftId_to_Shift", fields: [shiftId], references: [id])
+  approvedByEmployee Employee @relation("Timesheet_approvedBy_to_Employee", fields: [approvedBy], references: [id])
+
+  @@map("timesheets")
+}
+
+model Category {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId     String? @map("branch_id") @db.ObjectId
+  name         String
+  icon         String?
+  displayOrder Int     @default(0) @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  branch Branch? @relation("Category_branchId_to_Branch", fields: [branchId], references: [id])
+
+  menuItems MenuItem[] @relation("MenuItem_categoryId_to_Category")
+
+  @@map("categories")
+}
+
+model MenuItem {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  categoryId  String  @map("category_id") @db.ObjectId
+  branchId    String? @map("branch_id") @db.ObjectId
+  name        String
+  description String?
+  imageUrl    String? @map("image_url")
+  basePrice   Float   @map("base_price")
+  isActive    Boolean @default(true) @map("is_active")
+  isFeatured  Boolean @default(false) @map("is_featured")
+  itemType    String  @map("item_type")
+
+  category Category @relation("MenuItem_categoryId_to_Category", fields: [categoryId], references: [id])
+  branch   Branch?  @relation("MenuItem_branchId_to_Branch", fields: [branchId], references: [id])
+
+  menuItemVariants      MenuItemVariant[]      @relation("MenuItemVariant_menuItemId_to_MenuItem")
+  menuItemToppingGroups MenuItemToppingGroup[] @relation("MenuItemToppingGroup_menuItemId_to_MenuItem")
+  recipes               Recipe[]               @relation("Recipe_menuItemId_to_MenuItem")
+  orderItems            OrderItem[]            @relation("OrderItem_menuItemId_to_MenuItem")
+
+  @@map("menu_items")
+}
+
+model MenuItemVariant {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  menuItemId      String @map("menu_item_id") @db.ObjectId
+  name            String
+  priceAdjustment Float  @default(0.00) @map("price_adjustment")
+
+  menuItem MenuItem @relation("MenuItemVariant_menuItemId_to_MenuItem", fields: [menuItemId], references: [id])
+
+  recipes    Recipe[]    @relation("Recipe_variantId_to_MenuItemVariant")
+  orderItems OrderItem[] @relation("OrderItem_variantId_to_MenuItemVariant")
+
+  @@map("menu_item_variants")
+}
+
+model ToppingGroup {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  isRequired Boolean @default(false) @map("is_required")
+  minSelect  Int     @default(0) @map("min_select")
+  maxSelect  Int     @default(1) @map("max_select")
+
+  toppings              Topping[]              @relation("Topping_toppingGroupId_to_ToppingGroup")
+  menuItemToppingGroups MenuItemToppingGroup[] @relation("MenuItemToppingGroup_toppingGroupId_to_ToppingGroup")
+
+  @@map("topping_groups")
+}
+
+model Topping {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  toppingGroupId String @map("topping_group_id") @db.ObjectId
+  name           String
+  extraPrice     Float  @default(0.00) @map("extra_price")
+
+  toppingGroup ToppingGroup @relation("Topping_toppingGroupId_to_ToppingGroup", fields: [toppingGroupId], references: [id])
+
+  orderItemToppings OrderItemTopping[] @relation("OrderItemTopping_toppingId_to_Topping")
+
+  @@map("toppings")
+}
+
+model MenuItemToppingGroup {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  menuItemId     String @map("menu_item_id") @db.ObjectId
+  toppingGroupId String @map("topping_group_id") @db.ObjectId
+
+  menuItem     MenuItem     @relation("MenuItemToppingGroup_menuItemId_to_MenuItem", fields: [menuItemId], references: [id])
+  toppingGroup ToppingGroup @relation("MenuItemToppingGroup_toppingGroupId_to_ToppingGroup", fields: [toppingGroupId], references: [id])
+
+  @@unique([menuItemId, toppingGroupId])
+  @@map("menu_item_topping_groups")
+}
+
+model Ingredient {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId      String  @map("branch_id") @db.ObjectId
+  name          String
+  unit          String
+  category      String?
+  minStockLevel Float   @default(0.00) @map("min_stock_level")
+  currentStock  Float   @default(0.00) @map("current_stock")
+
+  branch Branch @relation("Ingredient_branchId_to_Branch", fields: [branchId], references: [id])
+
+  recipes            Recipe[]            @relation("Recipe_ingredientId_to_Ingredient")
+  stockTransactions  StockTransaction[]  @relation("StockTransaction_ingredientId_to_Ingredient")
+  purchaseOrderItems PurchaseOrderItem[] @relation("PurchaseOrderItem_ingredientId_to_Ingredient")
+
+  @@map("ingredients")
+}
+
+model Recipe {
+  id               String  @id @default(auto()) @map("_id") @db.ObjectId
+  menuItemId       String  @map("menu_item_id") @db.ObjectId
+  ingredientId     String  @map("ingredient_id") @db.ObjectId
+  quantityRequired Float   @map("quantity_required")
+  variantId        String? @map("variant_id") @db.ObjectId
+
+  menuItem   MenuItem         @relation("Recipe_menuItemId_to_MenuItem", fields: [menuItemId], references: [id])
+  ingredient Ingredient       @relation("Recipe_ingredientId_to_Ingredient", fields: [ingredientId], references: [id])
+  variant    MenuItemVariant? @relation("Recipe_variantId_to_MenuItemVariant", fields: [variantId], references: [id])
+
+  @@map("recipes")
+}
+
+model Area {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId    String  @map("branch_id") @db.ObjectId
+  name        String
+  description String?
+
+  branch Branch @relation("Area_branchId_to_Branch", fields: [branchId], references: [id])
+
+  tables Table[] @relation("Table_areaId_to_Area")
+
+  @@map("areas")
+}
+
+model Table {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  areaId    String  @map("area_id") @db.ObjectId
+  name      String
+  capacity  Int     @default(2)
+  status    String  @default("available")
+  qrCodeUrl String? @map("qr_code_url")
+
+  area Area @relation("Table_areaId_to_Area", fields: [areaId], references: [id])
+
+  orders       Order[]       @relation("Order_tableId_to_Table")
+  reservations Reservation[] @relation("Reservation_tableId_to_Table")
+
+  @@map("tables")
+}
+
+model Customer {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  phone        String    @unique
+  fullName     String    @map("full_name")
+  email        String?   @unique
+  birthday     DateTime?
+  avatarUrl    String?   @map("avatar_url")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  source       String    @default("walk-in")
+  passwordHash String?
+
+  customerMemberships CustomerMembership[] @relation("CustomerMembership_customerId_to_Customer")
+  orders              Order[]              @relation("Order_customerId_to_Customer")
+  voucherUsages       VoucherUsage[]       @relation("VoucherUsage_customerId_to_Customer")
+  reservations        Reservation[]        @relation("Reservation_customerId_to_Customer")
+
+  @@map("customers")
+}
+
+model MembershipTier {
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId        String? @map("branch_id") @db.ObjectId
+  name            String
+  minPoints       Int     @map("min_points")
+  discountPercent Float   @default(0.00) @map("discount_percent")
+  description     String?
+
+  branch Branch? @relation("MembershipTier_branchId_to_Branch", fields: [branchId], references: [id])
+
+  customerMemberships CustomerMembership[] @relation("CustomerMembership_tierId_to_MembershipTier")
+
+  @@map("membership_tiers")
+}
+
+model CustomerMembership {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  customerId  String   @map("customer_id") @db.ObjectId
+  tierId      String   @map("tier_id") @db.ObjectId
+  totalPoints Int      @default(0) @map("total_points")
+  totalSpent  Float    @default(0.00) @map("total_spent")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+  updatedAt   DateTime @default(now()) @map("updated_at")
+
+  customer Customer       @relation("CustomerMembership_customerId_to_Customer", fields: [customerId], references: [id])
+  tier     MembershipTier @relation("CustomerMembership_tierId_to_MembershipTier", fields: [tierId], references: [id])
+
+  pointTransactions PointTransaction[] @relation("PointTransaction_customerMembershipId_to_CustomerMembership")
+
+  @@map("customer_memberships")
+}
+
+model LoyaltyConfig {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId      String  @map("branch_id") @db.ObjectId
+  spendPerPoint Float   @map("spend_per_point")
+  pointToVnd    Float   @map("point_to_vnd")
+  isActive      Boolean @default(true) @map("is_active")
+
+  branch Branch @relation("LoyaltyConfig_branchId_to_Branch", fields: [branchId], references: [id])
+
+  @@map("loyalty_configs")
+}
+
+model PointTransaction {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  customerMembershipId String   @map("customer_membership_id") @db.ObjectId
+  orderId              String?  @map("order_id") @db.ObjectId
+  type                 String
+  points               Int
+  note                 String?
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  customerMembership CustomerMembership @relation("PointTransaction_customerMembershipId_to_CustomerMembership", fields: [customerMembershipId], references: [id])
+  order              Order?             @relation("PointTransaction_orderId_to_Order", fields: [orderId], references: [id])
+
+  @@map("point_transactions")
+}
+
+model Order {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId   String   @map("branch_id") @db.ObjectId
+  tableId    String?  @map("table_id") @db.ObjectId
+  customerId String?  @map("customer_id") @db.ObjectId
+  employeeId String   @map("employee_id") @db.ObjectId
+  orderType  String   @map("order_type")
+  status     String
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @map("updated_at")
+
+  branch   Branch    @relation("Order_branchId_to_Branch", fields: [branchId], references: [id])
+  table    Table?    @relation("Order_tableId_to_Table", fields: [tableId], references: [id])
+  customer Customer? @relation("Order_customerId_to_Customer", fields: [customerId], references: [id])
+  employee Employee  @relation("Order_employeeId_to_Employee", fields: [employeeId], references: [id])
+
+  pointTransactions PointTransaction[] @relation("PointTransaction_orderId_to_Order")
+  orderItems        OrderItem[]        @relation("OrderItem_orderId_to_Order")
+  invoices          Invoice[]          @relation("Invoice_orderId_to_Order")
+  deliveryOrders    DeliveryOrder[]    @relation("DeliveryOrder_orderId_to_Order")
+  voucherUsages     VoucherUsage[]     @relation("VoucherUsage_orderId_to_Order")
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  orderId    String  @map("order_id") @db.ObjectId
+  menuItemId String  @map("menu_item_id") @db.ObjectId
+  variantId  String? @map("variant_id") @db.ObjectId
+  quantity   Int
+  unitPrice  Float   @map("unit_price")
+  subtotal   Float
+  note       String?
+  status     String  @default("pending")
+
+  order    Order            @relation("OrderItem_orderId_to_Order", fields: [orderId], references: [id])
+  menuItem MenuItem         @relation("OrderItem_menuItemId_to_MenuItem", fields: [menuItemId], references: [id])
+  variant  MenuItemVariant? @relation("OrderItem_variantId_to_MenuItemVariant", fields: [variantId], references: [id])
+
+  orderItemToppings OrderItemTopping[] @relation("OrderItemTopping_orderItemId_to_OrderItem")
+
+  @@map("order_items")
+}
+
+model OrderItemTopping {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  orderItemId String @map("order_item_id") @db.ObjectId
+  toppingId   String @map("topping_id") @db.ObjectId
+  quantity    Int    @default(1)
+  extraPrice  Float  @map("extra_price")
+
+  orderItem OrderItem @relation("OrderItemTopping_orderItemId_to_OrderItem", fields: [orderItemId], references: [id])
+  topping   Topping   @relation("OrderItemTopping_toppingId_to_Topping", fields: [toppingId], references: [id])
+
+  @@map("order_item_toppings")
+}
+
+model Invoice {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderId        String    @unique @map("order_id") @db.ObjectId
+  subtotal       Float
+  discountAmount Float     @default(0.00) @map("discount_amount")
+  taxAmount      Float     @default(0.00) @map("tax_amount")
+  totalAmount    Float     @map("total_amount")
+  pointsUsed     Int       @default(0) @map("points_used")
+  pointsEarned   Int       @default(0) @map("points_earned")
+  voucherId      String?   @map("voucher_id") @db.ObjectId
+  status         String    @default("unpaid")
+  printedAt      DateTime? @map("printed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  order   Order    @relation("Invoice_orderId_to_Order", fields: [orderId], references: [id])
+  voucher Voucher? @relation("Invoice_voucherId_to_Voucher", fields: [voucherId], references: [id])
+
+  payments Payment[] @relation("Payment_invoiceId_to_Invoice")
+
+  @@map("invoices")
+}
+
+model Payment {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId      String    @map("invoice_id") @db.ObjectId
+  method         String
+  amount         Float
+  transactionRef String?   @map("transaction_ref")
+  qrCodeUrl      String?   @map("qr_code_url")
+  paidAt         DateTime? @map("paid_at")
+  status         String    @default("pending")
+
+  invoice Invoice @relation("Payment_invoiceId_to_Invoice", fields: [invoiceId], references: [id])
+
+  @@map("payments")
+}
+
+model DeliveryOrder {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  orderId            String    @unique @map("order_id") @db.ObjectId
+  customerName       String    @map("customer_name")
+  customerPhone      String    @map("customer_phone")
+  deliveryAddress    String    @map("delivery_address")
+  lat                Float?
+  lng                Float?
+  deliveryEmployeeId String?   @map("delivery_employee_id") @db.ObjectId
+  estimatedTime      DateTime? @map("estimated_time")
+  deliveredAt        DateTime? @map("delivered_at")
+  deliveryFee        Float     @default(0.00) @map("delivery_fee")
+  status             String
+  note               String?
+
+  order            Order     @relation("DeliveryOrder_orderId_to_Order", fields: [orderId], references: [id])
+  deliveryEmployee Employee? @relation("DeliveryOrder_deliveryEmployeeId_to_Employee", fields: [deliveryEmployeeId], references: [id])
+
+  @@map("delivery_orders")
+}
+
+model StockTransaction {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId     String   @map("branch_id") @db.ObjectId
+  ingredientId String   @map("ingredient_id") @db.ObjectId
+  type         String
+  quantity     Float
+  unitCost     Float    @default(0.00) @map("unit_cost")
+  totalCost    Float    @default(0.00) @map("total_cost")
+  referenceId  Int?     @map("reference_id")
+  employeeId   String   @map("employee_id") @db.ObjectId
+  note         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  branch     Branch     @relation("StockTransaction_branchId_to_Branch", fields: [branchId], references: [id])
+  ingredient Ingredient @relation("StockTransaction_ingredientId_to_Ingredient", fields: [ingredientId], references: [id])
+  employee   Employee   @relation("StockTransaction_employeeId_to_Employee", fields: [employeeId], references: [id])
+
+  @@map("stock_transactions")
+}
+
+model PurchaseOrder {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  branchId      String    @map("branch_id") @db.ObjectId
+  supplierName  String    @map("supplier_name")
+  supplierPhone String?   @map("supplier_phone")
+  totalAmount   Float     @map("total_amount")
+  status        String    @default("draft")
+  orderedAt     DateTime  @map("ordered_at")
+  receivedAt    DateTime? @map("received_at")
+  note          String?
+
+  branch Branch @relation("PurchaseOrder_branchId_to_Branch", fields: [branchId], references: [id])
+
+  purchaseOrderItems PurchaseOrderItem[] @relation("PurchaseOrderItem_purchaseOrderId_to_PurchaseOrder")
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  purchaseOrderId String @map("purchase_order_id") @db.ObjectId
+  ingredientId    String @map("ingredient_id") @db.ObjectId
+  quantity        Float
+  unitCost        Float  @map("unit_cost")
+  subtotal        Float
+
+  purchaseOrder PurchaseOrder @relation("PurchaseOrderItem_purchaseOrderId_to_PurchaseOrder", fields: [purchaseOrderId], references: [id])
+  ingredient    Ingredient    @relation("PurchaseOrderItem_ingredientId_to_Ingredient", fields: [ingredientId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+model ExpenseCategory {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String @unique
+
+  expenses Expense[] @relation("Expense_expenseCategoryId_to_ExpenseCategory")
+
+  @@map("expense_categories")
+}
+
+model Expense {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId          String   @map("branch_id") @db.ObjectId
+  expenseCategoryId String   @map("expense_category_id") @db.ObjectId
+  amount            Float
+  description       String
+  date              DateTime
+  employeeId        String   @map("employee_id") @db.ObjectId
+  receiptUrl        String?  @map("receipt_url")
+
+  branch          Branch          @relation("Expense_branchId_to_Branch", fields: [branchId], references: [id])
+  expenseCategory ExpenseCategory @relation("Expense_expenseCategoryId_to_ExpenseCategory", fields: [expenseCategoryId], references: [id])
+  employee        Employee        @relation("Expense_employeeId_to_Employee", fields: [employeeId], references: [id])
+
+  @@map("expenses")
+}
+
+model Campaign {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId    String?  @map("branch_id") @db.ObjectId
+  name        String
+  description String?
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  branch Branch? @relation("Campaign_branchId_to_Branch", fields: [branchId], references: [id])
+
+  vouchers Voucher[] @relation("Voucher_campaignId_to_Campaign")
+
+  @@map("campaigns")
+}
+
+model Voucher {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  campaignId    String   @map("campaign_id") @db.ObjectId
+  code          String   @unique
+  type          String
+  discountValue Float    @map("discount_value")
+  minOrderValue Float    @default(0.00) @map("min_order_value")
+  maxUses       Int      @default(100) @map("max_uses")
+  usedCount     Int      @default(0) @map("used_count")
+  startDate     DateTime @map("start_date")
+  expireDate    DateTime @map("expire_date")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  campaign Campaign @relation("Voucher_campaignId_to_Campaign", fields: [campaignId], references: [id])
+
+  invoices      Invoice[]      @relation("Invoice_voucherId_to_Voucher")
+  voucherUsages VoucherUsage[] @relation("VoucherUsage_voucherId_to_Voucher")
+
+  @@map("vouchers")
+}
+
+model VoucherUsage {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  voucherId  String   @map("voucher_id") @db.ObjectId
+  customerId String   @map("customer_id") @db.ObjectId
+  orderId    String   @map("order_id") @db.ObjectId
+  usedAt     DateTime @default(now()) @map("used_at")
+
+  voucher  Voucher  @relation("VoucherUsage_voucherId_to_Voucher", fields: [voucherId], references: [id])
+  customer Customer @relation("VoucherUsage_customerId_to_Customer", fields: [customerId], references: [id])
+  order    Order    @relation("VoucherUsage_orderId_to_Order", fields: [orderId], references: [id])
+
+  @@map("voucher_usages")
+}
+
+model Page {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId    String?  @map("branch_id") @db.ObjectId
+  slug        String   @unique
+  title       String
+  content     String
+  isPublished Boolean  @default(true) @map("is_published")
+  updatedAt   DateTime @default(now()) @map("updated_at")
+
+  branch Branch? @relation("Page_branchId_to_Branch", fields: [branchId], references: [id])
+
+  @@map("pages")
+}
+
+model Banner {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  branchId     String?   @map("branch_id") @db.ObjectId
+  imageUrl     String    @map("image_url")
+  title        String?
+  subtitle     String?
+  ctaUrl       String?   @map("cta_url")
+  displayOrder Int       @default(0) @map("display_order")
+  isActive     Boolean   @default(true) @map("is_active")
+  startDate    DateTime? @map("start_date")
+  endDate      DateTime? @map("end_date")
+
+  branch Branch? @relation("Banner_branchId_to_Branch", fields: [branchId], references: [id])
+
+  @@map("banners")
+}
+
+model Post {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  branchId     String?   @map("branch_id") @db.ObjectId
+  authorId     String    @map("author_id") @db.ObjectId
+  title        String
+  slug         String    @unique
+  thumbnailUrl String?   @map("thumbnail_url")
+  content      String
+  category     String
+  tags         String?
+  isPublished  Boolean   @default(true) @map("is_published")
+  publishedAt  DateTime? @map("published_at")
+
+  branch Branch?  @relation("Post_branchId_to_Branch", fields: [branchId], references: [id])
+  author Employee @relation("Post_authorId_to_Employee", fields: [authorId], references: [id])
+
+  @@map("posts")
+}
+
+model Event {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId     String   @map("branch_id") @db.ObjectId
+  title        String
+  description  String
+  thumbnailUrl String?  @map("thumbnail_url")
+  eventDate    DateTime @map("event_date")
+  startTime    DateTime @map("start_time")
+  endTime      DateTime @map("end_time")
+  locationNote String?  @map("location_note")
+  ticketPrice  Float    @default(0.00) @map("ticket_price")
+  isPublished  Boolean  @default(true) @map("is_published")
+
+  branch Branch @relation("Event_branchId_to_Branch", fields: [branchId], references: [id])
+
+  @@map("events")
+}
+
+model Reservation {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId     String   @map("branch_id") @db.ObjectId
+  customerId   String?  @map("customer_id") @db.ObjectId
+  guestName    String   @map("guest_name")
+  guestPhone   String   @map("guest_phone")
+  guestCount   Int      @map("guest_count")
+  tableId      String?  @map("table_id") @db.ObjectId
+  reservedDate DateTime @map("reserved_date")
+  reservedTime DateTime @map("reserved_time")
+  note         String?
+  status       String   @default("pending")
+
+  branch   Branch    @relation("Reservation_branchId_to_Branch", fields: [branchId], references: [id])
+  customer Customer? @relation("Reservation_customerId_to_Customer", fields: [customerId], references: [id])
+  table    Table?    @relation("Reservation_tableId_to_Table", fields: [tableId], references: [id])
+
+  @@map("reservations")
+}
+
+model User {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String   @unique
+  name         String?
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

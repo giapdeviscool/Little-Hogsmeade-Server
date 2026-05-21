@@ -1,0 +1,13 @@
+services:
+  wdp-db:
+    image: mongo:8
+    container_name: little-hogsmeade-mongo
+    restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27029:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
