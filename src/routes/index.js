@@ -14,7 +14,7 @@ router.get('/resources', function(req, res) {
     data: resourcesConfig.getResources().map(function(resource) {
       return {
         name: resource.name,
-        path: '/api/' + resource.path,
+        path: '/api/v1/' + resource.path,
         model: resource.model
       };
     })

@@ -10,15 +10,15 @@ function connectWithLog() {
     return connectionPromise;
   }
 
-  console.log('[prisma] Connecting to MongoDB:', maskDatabaseUrl(env.databaseUrl));
+  console.log('[database] Connecting to MongoDB:', maskDatabaseUrl(env.databaseUrl));
 
   connectionPromise = prisma.$connect()
     .then(function() {
-      console.log('[prisma] MongoDB connected');
+      console.log('[database] MongoDB connected');
     })
     .catch(function(error) {
       connectionPromise = null;
-      console.error('[prisma] MongoDB connection failed:', error.message);
+      console.error('[database] MongoDB connection failed:', summarizeConnectionError(error));
     });
 
   return connectionPromise;
@@ -27,7 +27,7 @@ function connectWithLog() {
 function disconnectWithLog() {
   return prisma.$disconnect()
     .then(function() {
-      console.log('[prisma] MongoDB disconnected');
+      console.log('[database] MongoDB disconnected');
     });
 }
 
@@ -39,6 +39,18 @@ function maskDatabaseUrl(databaseUrl) {
   return databaseUrl.replace(/\/\/([^:]+):([^@]+)@/, function(match, username) {
     return '//' + username + ':****@';
   });
+}
+
+function summarizeConnectionError(error) {
+  if (/server selection timeout/i.test(error.message || '')) {
+    return 'server selection timeout';
+  }
+
+  if (/connection refused/i.test(error.message || '')) {
+    return 'connection refused';
+  }
+
+  return error.message;
 }
 
 prisma.connectWithLog = connectWithLog;

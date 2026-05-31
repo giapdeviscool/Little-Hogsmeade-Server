@@ -4,7 +4,7 @@ var router = express.Router();
 router.get('/', function(req, res, next) {
   res.json({
     message: 'Little Hogsmeade Server is running',
-    api: '/api'
+    api: '/api/v1'
   });
 });
 

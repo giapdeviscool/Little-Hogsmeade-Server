@@ -128,7 +128,7 @@ http://localhost:3000
 API base URL:
 
 ```txt
-http://localhost:3000/api
+http://localhost:3000/api/v1
 ```
 
 ## Workflow Dev
@@ -165,7 +165,7 @@ Nếu thêm model mới trong `prisma/schema.prisma`, thêm model đó vào:
 src/config/resources.js
 ```
 
-File này quyết định resource nào được tự động mount route CRUD dưới `/api`.
+File này quyết định resource nào được tự động mount route CRUD dưới `/api/v1`.
 
 ## Cấu Trúc Thư Mục
 
@@ -205,8 +205,8 @@ public/
 
 Project hiện có 2 kiểu API:
 
-- `/api/auth`: register/login chung cho `customers` và `employees`.
-- `/api/users`: module riêng, có controller/service/repository/validator riêng.
+- `/api/v1/auth`: register/login chung cho `customers` và `employees`.
+- `/api/v1/users`: module riêng, có controller/service/repository/validator riêng.
 - Các bảng từ thiết kế DB Excel: dùng generic CRUD chung qua `resource.*`.
 
 Các file generic CRUD:
@@ -230,34 +230,34 @@ GET /
 Danh sách resource đang được mount:
 
 ```txt
-GET /api/resources
+GET /api/v1/resources
 ```
 
 Auth:
 
 ```txt
-POST /api/auth/register
-POST /api/auth/login
+POST /api/v1/auth/register
+POST /api/v1/auth/login
 ```
 
 Users:
 
 ```txt
-GET    /api/users
-GET    /api/users/:id
-POST   /api/users
-PATCH  /api/users/:id
-DELETE /api/users/:id
+GET    /api/v1/users
+GET    /api/v1/users/:id
+POST   /api/v1/users
+PATCH  /api/v1/users/:id
+DELETE /api/v1/users/:id
 ```
 
 Generic CRUD cho các bảng:
 
 ```txt
-GET    /api/:resource
-GET    /api/:resource/:id
-POST   /api/:resource
-PATCH  /api/:resource/:id
-DELETE /api/:resource/:id
+GET    /api/v1/:resource
+GET    /api/v1/:resource/:id
+POST   /api/v1/:resource
+PATCH  /api/v1/:resource/:id
+DELETE /api/v1/:resource/:id
 ```
 
 Query params cho API list:
@@ -270,7 +270,7 @@ skip   số record muốn bỏ qua
 Ví dụ:
 
 ```bash
-curl "http://localhost:3000/api/menu-items?limit=20&skip=0"
+curl "http://localhost:3000/api/v1/menu-items?limit=20&skip=0"
 ```
 
 ## Danh Sách Resource
@@ -278,46 +278,46 @@ curl "http://localhost:3000/api/menu-items?limit=20&skip=0"
 Có thể dùng URL dạng gạch ngang hoặc alias đúng tên bảng gốc trong Excel.
 
 ```txt
-branches                    /api/branches
-branch_configs              /api/branch-configs              hoặc /api/branch_configs
-roles                       /api/roles
-employees                   /api/employees
-shifts                      /api/shifts
-timesheets                  /api/timesheets
-categories                  /api/categories
-menu_items                  /api/menu-items                  hoặc /api/menu_items
-menu_item_variants          /api/menu-item-variants          hoặc /api/menu_item_variants
-topping_groups              /api/topping-groups              hoặc /api/topping_groups
-toppings                    /api/toppings
-menu_item_topping_groups    /api/menu-item-topping-groups    hoặc /api/menu_item_topping_groups
-ingredients                 /api/ingredients
-recipes                     /api/recipes
-areas                       /api/areas
-tables                      /api/tables
-customers                   /api/customers
-membership_tiers            /api/membership-tiers            hoặc /api/membership_tiers
-customer_memberships        /api/customer-memberships        hoặc /api/customer_memberships
-loyalty_configs             /api/loyalty-configs             hoặc /api/loyalty_configs
-point_transactions          /api/point-transactions          hoặc /api/point_transactions
-orders                      /api/orders
-order_items                 /api/order-items                 hoặc /api/order_items
-order_item_toppings         /api/order-item-toppings         hoặc /api/order_item_toppings
-invoices                    /api/invoices
-payments                    /api/payments
-delivery_orders             /api/delivery-orders             hoặc /api/delivery_orders
-stock_transactions          /api/stock-transactions          hoặc /api/stock_transactions
-purchase_orders             /api/purchase-orders             hoặc /api/purchase_orders
-purchase_order_items        /api/purchase-order-items        hoặc /api/purchase_order_items
-expense_categories          /api/expense-categories          hoặc /api/expense_categories
-expenses                    /api/expenses
-campaigns                   /api/campaigns
-vouchers                    /api/vouchers
-voucher_usages              /api/voucher-usages              hoặc /api/voucher_usages
-pages                       /api/pages
-banners                     /api/banners
-posts                       /api/posts
-events                      /api/events
-reservations                /api/reservations
+branches                    /api/v1/branches
+branch_configs              /api/v1/branch-configs              hoặc /api/v1/branch_configs
+roles                       /api/v1/roles
+employees                   /api/v1/employees
+shifts                      /api/v1/shifts
+timesheets                  /api/v1/timesheets
+categories                  /api/v1/categories
+menu_items                  /api/v1/menu-items                  hoặc /api/v1/menu_items
+menu_item_variants          /api/v1/menu-item-variants          hoặc /api/v1/menu_item_variants
+topping_groups              /api/v1/topping-groups              hoặc /api/v1/topping_groups
+toppings                    /api/v1/toppings
+menu_item_topping_groups    /api/v1/menu-item-topping-groups    hoặc /api/v1/menu_item_topping_groups
+ingredients                 /api/v1/ingredients
+recipes                     /api/v1/recipes
+areas                       /api/v1/areas
+tables                      /api/v1/tables
+customers                   /api/v1/customers
+membership_tiers            /api/v1/membership-tiers            hoặc /api/v1/membership_tiers
+customer_memberships        /api/v1/customer-memberships        hoặc /api/v1/customer_memberships
+loyalty_configs             /api/v1/loyalty-configs             hoặc /api/v1/loyalty_configs
+point_transactions          /api/v1/point-transactions          hoặc /api/v1/point_transactions
+orders                      /api/v1/orders
+order_items                 /api/v1/order-items                 hoặc /api/v1/order_items
+order_item_toppings         /api/v1/order-item-toppings         hoặc /api/v1/order_item_toppings
+invoices                    /api/v1/invoices
+payments                    /api/v1/payments
+delivery_orders             /api/v1/delivery-orders             hoặc /api/v1/delivery_orders
+stock_transactions          /api/v1/stock-transactions          hoặc /api/v1/stock_transactions
+purchase_orders             /api/v1/purchase-orders             hoặc /api/v1/purchase_orders
+purchase_order_items        /api/v1/purchase-order-items        hoặc /api/v1/purchase_order_items
+expense_categories          /api/v1/expense-categories          hoặc /api/v1/expense_categories
+expenses                    /api/v1/expenses
+campaigns                   /api/v1/campaigns
+vouchers                    /api/v1/vouchers
+voucher_usages              /api/v1/voucher-usages              hoặc /api/v1/voucher_usages
+pages                       /api/v1/pages
+banners                     /api/v1/banners
+posts                       /api/v1/posts
+events                      /api/v1/events
+reservations                /api/v1/reservations
 ```
 
 ## Ví Dụ Request
@@ -325,7 +325,7 @@ reservations                /api/reservations
 Đăng ký:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/register \
+curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "accountType": "customer",
@@ -340,7 +340,7 @@ curl -X POST http://localhost:3000/api/auth/register \
 Đăng ký nhân viên:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/register \
+curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "accountType": "employee",
@@ -357,7 +357,7 @@ curl -X POST http://localhost:3000/api/auth/register \
 Đăng nhập:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
+curl -X POST http://localhost:3000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "identifier": "0900000000",
@@ -368,7 +368,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 Tạo user:
 
 ```bash
-curl -X POST http://localhost:3000/api/users \
+curl -X POST http://localhost:3000/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@example.com","name":"Demo User"}'
 ```
@@ -376,7 +376,7 @@ curl -X POST http://localhost:3000/api/users \
 Tạo chi nhánh:
 
 ```bash
-curl -X POST http://localhost:3000/api/branches \
+curl -X POST http://localhost:3000/api/v1/branches \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Little Hogsmeade - Ho Tay",
@@ -393,7 +393,7 @@ curl -X POST http://localhost:3000/api/branches \
 Tạo role:
 
 ```bash
-curl -X POST http://localhost:3000/api/roles \
+curl -X POST http://localhost:3000/api/v1/roles \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Manager",
@@ -404,13 +404,13 @@ curl -X POST http://localhost:3000/api/roles \
 Lấy một record:
 
 ```bash
-curl http://localhost:3000/api/branches/66504a1f3b8f8c5e8f4a1111
+curl http://localhost:3000/api/v1/branches/66504a1f3b8f8c5e8f4a1111
 ```
 
 Cập nhật một record:
 
 ```bash
-curl -X PATCH http://localhost:3000/api/branches/66504a1f3b8f8c5e8f4a1111 \
+curl -X PATCH http://localhost:3000/api/v1/branches/66504a1f3b8f8c5e8f4a1111 \
   -H "Content-Type: application/json" \
   -d '{"status":"maintenance"}'
 ```
@@ -418,7 +418,7 @@ curl -X PATCH http://localhost:3000/api/branches/66504a1f3b8f8c5e8f4a1111 \
 Xóa một record:
 
 ```bash
-curl -X DELETE http://localhost:3000/api/branches/66504a1f3b8f8c5e8f4a1111
+curl -X DELETE http://localhost:3000/api/v1/branches/66504a1f3b8f8c5e8f4a1111
 ```
 
 ## Quy Ước Body
