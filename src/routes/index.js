@@ -1,6 +1,9 @@
 var express = require('express');
 var authRoutes = require('./auth.routes');
 var userRoutes = require('./user.routes');
+var branchRoutes = require('./branch.routes');
+var chainRoutes = require('./chain.routes');
+var promotionRoutes = require('./promotion.routes');
 var resourcesConfig = require('../config/resources');
 var createResourceRouter = require('./resource.routes');
 
@@ -8,6 +11,9 @@ var router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+router.use('/branches', branchRoutes);
+router.use('/chain', chainRoutes);
+router.use('/promotions', promotionRoutes);
 
 router.get('/resources', function(req, res) {
   res.json({

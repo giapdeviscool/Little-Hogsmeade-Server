@@ -7,7 +7,11 @@
     "dev": "nodemon ./bin/www",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "db:seed": "node ./seeds/module4.seed.js"
+  },
+  "prisma": {
+    "seed": "node ./seeds/module4.seed.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

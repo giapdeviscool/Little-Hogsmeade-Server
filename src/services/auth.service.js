@@ -110,6 +110,8 @@ async function findAccountByIdentifier(identifier) {
 }
 
 function createAuthResponse(accountType, account) {
+  var roleName = account.role ? account.role.name : null;
+
   return {
     accountType: accountType,
     user: sanitizeAccount(accountType, account),
@@ -117,7 +119,10 @@ function createAuthResponse(accountType, account) {
       sub: account.id,
       type: accountType,
       phone: account.phone,
-      email: account.email || null
+      email: account.email || null,
+      branchId: account.branchId || null,
+      roleId: account.roleId || null,
+      roleName: roleName
     })
   };
 }
@@ -174,6 +179,7 @@ function sanitizeAccount(accountType, account) {
   if (accountType === 'employee') {
     base.branchId = account.branchId;
     base.roleId = account.roleId;
+    base.roleName = account.role ? account.role.name : null;
     base.status = account.status;
   } else {
     base.birthday = account.birthday;
@@ -224,6 +230,35 @@ function signToken(payload) {
   return encodedHeader + '.' + encodedBody + '.' + signature;
 }
 
+function verifyToken(token) {
+  var parts = token.split('.');
+
+  if (parts.length !== 3) {
+    throw new Error('Invalid token format');
+  }
+
+  var encodedHeader = parts[0];
+  var encodedBody = parts[1];
+  var signature = parts[2];
+  var expectedSignature = crypto
+    .createHmac('sha256', env.jwtSecret)
+    .update(encodedHeader + '.' + encodedBody)
+    .digest('base64url');
+
+  if (signature !== expectedSignature) {
+    throw new Error('Invalid token signature');
+  }
+
+  var payload = JSON.parse(Buffer.from(encodedBody, 'base64url').toString());
+  var now = Math.floor(Date.now() / 1000);
+
+  if (payload.exp < now) {
+    throw new Error('Token expired');
+  }
+
+  return payload;
+}
+
 function base64Url(value) {
   return Buffer.from(value).toString('base64url');
 }
@@ -236,5 +271,6 @@ function throwHttpError(statusCode, message) {
 
 module.exports = {
   register: register,
-  login: login
+  login: login,
+  verifyToken: verifyToken
 };

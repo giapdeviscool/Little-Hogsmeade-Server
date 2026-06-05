@@ -18,7 +18,8 @@ function findCustomerByEmail(email) {
 
 function findEmployeeByPhone(phone) {
   return prisma.employee.findUnique({
-    where: { phone: phone }
+    where: { phone: phone },
+    include: { role: true }
   });
 }
 
@@ -28,7 +29,15 @@ function findEmployeeByEmail(email) {
   }
 
   return prisma.employee.findFirst({
-    where: { email: email }
+    where: { email: email },
+    include: { role: true }
+  });
+}
+
+function findEmployeeById(id) {
+  return prisma.employee.findUnique({
+    where: { id: id },
+    include: { role: true }
   });
 }
 
@@ -49,6 +58,7 @@ module.exports = {
   findCustomerByEmail: findCustomerByEmail,
   findEmployeeByPhone: findEmployeeByPhone,
   findEmployeeByEmail: findEmployeeByEmail,
+  findEmployeeById: findEmployeeById,
   createCustomer: createCustomer,
   createEmployee: createEmployee
 };

@@ -8,17 +8,18 @@ datasource db {
 }
 
 model Branch {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  address   String
-  phone     String
-  email     String?
-  lat       Float
-  lng       Float
-  openTime  DateTime @map("open_time")
-  closeTime DateTime @map("close_time")
-  status    String   @default("active")
-  createdAt DateTime @default(now()) @map("created_at")
+  id                         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                       String
+  address                    String
+  phone                      String
+  email                      String?
+  lat                        Float
+  lng                        Float
+  openTime                   DateTime @map("open_time")
+  closeTime                  DateTime @map("close_time")
+  status                     String   @default("active")
+  allowLocalPricingOverride  Boolean  @default(false) @map("allow_local_pricing_override")
+  createdAt                  DateTime @default(now()) @map("created_at")
 
   branchConfigs     BranchConfig[]     @relation("BranchConfig_branchId_to_Branch")
   employees         Employee[]         @relation("Employee_branchId_to_Branch")
@@ -41,6 +42,17 @@ model Branch {
   reservations      Reservation[]      @relation("Reservation_branchId_to_Branch")
 
   @@map("branches")
+}
+
+model ChainConfig {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  loyaltyEarnRate      Float    @default(1) @map("loyalty_earn_rate")
+  globalPricingEnabled Boolean  @default(true) @map("global_pricing_enabled")
+  defaultCurrency      String   @default("VND") @map("default_currency")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@map("chain_configs")
 }
 
 model BranchConfig {
@@ -547,13 +559,17 @@ model Expense {
 }
 
 model Campaign {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  branchId    String?  @map("branch_id") @db.ObjectId
-  name        String
-  description String?
-  startDate   DateTime @map("start_date")
-  endDate     DateTime @map("end_date")
-  isActive    Boolean  @default(true) @map("is_active")
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId        String?  @map("branch_id") @db.ObjectId
+  name            String
+  description     String?
+  startDate       DateTime @map("start_date")
+  endDate         DateTime @map("end_date")
+  discountValue   Float    @default(0) @map("discount_value")
+  discountType    String   @default("percent") @map("discount_type")
+  scope           String   @default("global")
+  appliedBranches String[] @default([]) @map("applied_branches") @db.ObjectId
+  isActive        Boolean  @default(true) @map("is_active")
 
   branch Branch? @relation("Campaign_branchId_to_Branch", fields: [branchId], references: [id])
 
