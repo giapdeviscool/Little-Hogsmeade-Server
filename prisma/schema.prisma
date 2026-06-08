@@ -85,6 +85,7 @@ model Employee {
   avatarUrl    String?  @map("avatar_url")
   roleId       String   @map("role_id") @db.ObjectId
   hiredDate    DateTime @map("hired_date")
+  baseSalary   Float?   @map("base_salary")
   status       String   @default("active")
   pinCode      String   @map("pin_code")
   passwordHash String?
