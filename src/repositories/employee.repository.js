@@ -119,6 +119,18 @@ function hasActiveAttendance(employeeId) {
   });
 }
 
+function findRoleById(roleId) {
+  return prisma.role.findUnique({
+    where: { id: roleId }
+  });
+}
+
+function findAllRoles() {
+  return prisma.role.findMany({
+    orderBy: { name: 'asc' }
+  });
+}
+
 module.exports = {
   findAll: findAll,
   count: count,
@@ -128,5 +140,7 @@ module.exports = {
   create: create,
   update: update,
   hasOpenShift: hasOpenShift,
-  hasActiveAttendance: hasActiveAttendance
+  hasActiveAttendance: hasActiveAttendance,
+  findRoleById: findRoleById,
+  findAllRoles: findAllRoles
 };

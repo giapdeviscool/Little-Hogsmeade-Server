@@ -7,6 +7,7 @@ var PIN_LENGTH = 6;
 var MAX_PAGE_SIZE = 50;
 var VALID_STATUSES = ['active', 'on_leave', 'resigned', 'inactive'];
 var REVOKED_STATUSES = ['resigned', 'inactive'];
+var PRIVILEGED_ROLES = ['owner', 'chain owner', 'chain admin', 'admin', 'manager'];
 
 // ──────────────────────────────────────────────
 // UC55 – View the Staff list
@@ -309,6 +310,81 @@ function validateUpdatePayload(payload, existing) {
 }
 
 // ──────────────────────────────────────────────
+// UC58 – Assign account roles
+// ──────────────────────────────────────────────
+async function assignRole(employeeId, roleId, currentUser) {
+  assertValidObjectId(employeeId, 'employee id');
+
+  if (!roleId) {
+    throwHttpError(400, 'roleId is required');
+  }
+
+  assertValidObjectId(roleId, 'roleId');
+
+  // BR-HR20: Cannot modify own role to prevent accidental lockouts
+  if (currentUser.id === employeeId) {
+    throwHttpError(400, 'You cannot modify your own access level to prevent accidental system lockouts.');
+  }
+
+  var existing = await employeeRepository.findById(employeeId);
+
+  if (!existing) {
+    throwHttpError(404, 'Employee not found');
+  }
+
+  // BR-HR20: Branch jurisdiction
+  assertBranchJurisdiction(currentUser, existing.branchId);
+
+  // Validate target role exists
+  var targetRole = await employeeRepository.findRoleById(roleId);
+
+  if (!targetRole) {
+    throwHttpError(400, 'The provided role does not exist in the system');
+  }
+
+  // BR-HR17: Privilege escalation prevention
+  assertPrivilegeEscalation(currentUser, targetRole);
+
+  // BR-HR19: Cannot revoke Cashier role if employee has open shift
+  var currentRoleName = existing.role ? String(existing.role.name).toLowerCase() : '';
+  var newRoleName = String(targetRole.name).toLowerCase();
+
+  if (currentRoleName.indexOf('cashier') > -1 && newRoleName.indexOf('cashier') === -1) {
+    var openShifts = await employeeRepository.hasOpenShift(employeeId);
+
+    if (openShifts > 0) {
+      throwHttpError(400, 'Cannot revoke Cashier privileges while the employee has an OPEN shift. Please close the shift first.');
+    }
+  }
+
+  // If role didn't actually change, no-op
+  if (existing.roleId === roleId) {
+    throwHttpError(400, 'Employee already has this role assigned');
+  }
+
+  var employee = await employeeRepository.update(employeeId, { roleId: roleId });
+
+  return employee;
+}
+
+function assertPrivilegeEscalation(currentUser, targetRole) {
+  var targetRoleName = String(targetRole.name || '').trim().toLowerCase();
+  var isTargetPrivileged = false;
+
+  for (var i = 0; i < PRIVILEGED_ROLES.length; i++) {
+    if (targetRoleName.indexOf(PRIVILEGED_ROLES[i]) > -1) {
+      isTargetPrivileged = true;
+      break;
+    }
+  }
+
+  // Chain Admin cannot assign Owner or Chain Admin roles
+  if (isTargetPrivileged && !authMiddleware.isOwner(currentUser)) {
+    throwHttpError(403, 'Permission Denied: Only an Owner can assign administrative roles. Privilege escalation is strictly prohibited.');
+  }
+}
+
+// ──────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────
 function assertBranchJurisdiction(currentUser, targetBranchId) {
@@ -392,5 +468,6 @@ function throwHttpError(statusCode, message) {
 module.exports = {
   getEmployees: getEmployees,
   createEmployee: createEmployee,
-  updateEmployee: updateEmployee
+  updateEmployee: updateEmployee,
+  assignRole: assignRole
 };

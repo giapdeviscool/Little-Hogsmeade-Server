@@ -40,6 +40,7 @@ model Branch {
   posts             Post[]             @relation("Post_branchId_to_Branch")
   events            Event[]            @relation("Event_branchId_to_Branch")
   reservations      Reservation[]      @relation("Reservation_branchId_to_Branch")
+  rosters           Roster[]           @relation("Roster_branchId_to_Branch")
 
   @@map("branches")
 }
@@ -100,6 +101,7 @@ model Employee {
   stockTransactions    StockTransaction[] @relation("StockTransaction_employeeId_to_Employee")
   expenses             Expense[]          @relation("Expense_employeeId_to_Employee")
   posts                Post[]             @relation("Post_authorId_to_Employee")
+  rosters              Roster[]           @relation("Roster_employeeId_to_Employee")
 
   @@map("employees")
 }
@@ -110,10 +112,12 @@ model Shift {
   name      String
   startTime DateTime @map("start_time")
   endTime   DateTime @map("end_time")
+  status    String   @default("active")
 
   branch Branch @relation("Shift_branchId_to_Branch", fields: [branchId], references: [id])
 
   timesheets Timesheet[] @relation("Timesheet_shiftId_to_Shift")
+  rosters    Roster[]    @relation("Roster_shiftId_to_Shift")
 
   @@map("shifts")
 }
@@ -121,18 +125,35 @@ model Shift {
 model Timesheet {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   employeeId String    @map("employee_id") @db.ObjectId
-  shiftId    String    @map("shift_id") @db.ObjectId
+  shiftId    String?   @map("shift_id") @db.ObjectId
   date       DateTime
   checkIn    DateTime? @map("check_in")
   checkOut   DateTime? @map("check_out")
   note       String?
-  approvedBy String    @map("approved_by") @db.ObjectId
+  approvedBy String?   @map("approved_by") @db.ObjectId
 
-  employee           Employee @relation("Timesheet_employeeId_to_Employee", fields: [employeeId], references: [id])
-  shift              Shift    @relation("Timesheet_shiftId_to_Shift", fields: [shiftId], references: [id])
-  approvedByEmployee Employee @relation("Timesheet_approvedBy_to_Employee", fields: [approvedBy], references: [id])
+  employee           Employee  @relation("Timesheet_employeeId_to_Employee", fields: [employeeId], references: [id])
+  shift              Shift?    @relation("Timesheet_shiftId_to_Shift", fields: [shiftId], references: [id])
+  approvedByEmployee Employee? @relation("Timesheet_approvedBy_to_Employee", fields: [approvedBy], references: [id])
 
   @@map("timesheets")
+}
+
+model Roster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId   String   @map("branch_id") @db.ObjectId
+  employeeId String   @map("employee_id") @db.ObjectId
+  shiftId    String   @map("shift_id") @db.ObjectId
+  date       DateTime
+  status     String   @default("scheduled")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  branch   Branch   @relation("Roster_branchId_to_Branch", fields: [branchId], references: [id])
+  employee Employee @relation("Roster_employeeId_to_Employee", fields: [employeeId], references: [id])
+  shift    Shift    @relation("Roster_shiftId_to_Shift", fields: [shiftId], references: [id])
+
+  @@unique([employeeId, shiftId, date])
+  @@map("rosters")
 }
 
 model Category {

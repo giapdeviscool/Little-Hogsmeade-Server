@@ -34,8 +34,21 @@ async function updateEmployee(req, res, next) {
   }
 }
 
+async function assignRole(req, res, next) {
+  try {
+    var employee = await employeeService.assignRole(req.params.id, req.body.roleId, req.user);
+    res.json({
+      data: employee,
+      message: 'Role Updated Successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getEmployees: getEmployees,
   createEmployee: createEmployee,
-  updateEmployee: updateEmployee
+  updateEmployee: updateEmployee,
+  assignRole: assignRole
 };
