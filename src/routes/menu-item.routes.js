@@ -2,7 +2,7 @@ var express = require('express');
 var menuItemController = require('../controllers/menu-item.controller');
 var authMiddleware = require('../middlewares/auth.middleware');
 
-var uploadMiddleware = require('../middlewares/upload.middleware');
+var imageUploadMiddleware = require('../middlewares/image-upload.middleware');
 
 var router = express.Router();
 
@@ -13,8 +13,10 @@ router.get('/', authMiddleware.authenticate, menuItemController.getMenuItems);
 router.post('/', 
   authMiddleware.authenticate, 
   authMiddleware.requireChainRole, 
-  uploadMiddleware.single('image'), 
+  imageUploadMiddleware.singleImage('image'), 
   menuItemController.createMenuItem
 );
+// UC67: Update item status
+router.patch('/:id/status', authMiddleware.authenticate, menuItemController.updateStatus);
 
 module.exports = router;

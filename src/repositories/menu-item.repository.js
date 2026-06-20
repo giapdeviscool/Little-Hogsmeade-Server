@@ -41,9 +41,31 @@ async function createMenuItem(data) {
   });
 }
 
+async function findMenuItemById(id) {
+  return prisma.menuItem.findUnique({
+    where: { id: id }
+  });
+}
+
+async function countRecipesForMenuItem(menuItemId) {
+  return prisma.recipe.count({
+    where: { menuItemId: menuItemId }
+  });
+}
+
+async function updateMenuItemStatus(id, isActive) {
+  return prisma.menuItem.update({
+    where: { id: id },
+    data: { isActive: isActive }
+  });
+}
+
 module.exports = {
   findMenuItems: findMenuItems,
   countMenuItems: countMenuItems,
   findMenuItemByNameAndCategory: findMenuItemByNameAndCategory,
-  createMenuItem: createMenuItem
+  createMenuItem: createMenuItem,
+  findMenuItemById: findMenuItemById,
+  countRecipesForMenuItem: countRecipesForMenuItem,
+  updateMenuItemStatus: updateMenuItemStatus
 };

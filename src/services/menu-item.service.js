@@ -107,7 +107,43 @@ async function createMenuItem(data, user, fileUrl) {
   return await menuItemRepository.createMenuItem(itemData);
 }
 
+async function updateMenuItemStatus(id, isActive, user) {
+  var roleName = user.roleName || '';
+  if (roleName !== 'Owner' && roleName !== 'Chain Admin' && roleName !== 'Cashier') {
+    var errRole = new Error('Không có quyền cập nhật trạng thái món ăn');
+    errRole.status = 403;
+    throw errRole;
+  }
+
+  var item = await menuItemRepository.findMenuItemById(id);
+  if (!item) {
+    var errNotFound = new Error('Không tìm thấy món ăn');
+    errNotFound.status = 404;
+    throw errNotFound;
+  }
+
+  if (roleName === 'Chain Admin' || roleName === 'Cashier') {
+    if (item.branchId !== null && item.branchId !== user.branchId) {
+      var errBranch = new Error('Không có quyền cập nhật món ăn của chi nhánh khác');
+      errBranch.status = 403;
+      throw errBranch;
+    }
+  }
+
+  if (isActive === true) {
+    var recipeCount = await menuItemRepository.countRecipesForMenuItem(id);
+    if (recipeCount === 0) {
+      var errBOM = new Error('Cannot activate item. Please configure the ingredient recipe (BOM) for this item before making it available for sale.');
+      errBOM.status = 400;
+      throw errBOM;
+    }
+  }
+
+  return await menuItemRepository.updateMenuItemStatus(id, isActive);
+}
+
 module.exports = {
   getMenuItems: getMenuItems,
-  createMenuItem: createMenuItem
+  createMenuItem: createMenuItem,
+  updateMenuItemStatus: updateMenuItemStatus
 };
