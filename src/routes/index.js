@@ -9,6 +9,7 @@ var shiftRoutes = require('./shift.routes');
 var rosterRoutes = require('./roster.routes');
 var attendanceRoutes = require('./attendance.routes');
 var payrollRoutes = require('./payroll.routes');
+var categoryRoutes = require('./category.routes');
 var resourcesConfig = require('../config/resources');
 var createResourceRouter = require('./resource.routes');
 
@@ -24,6 +25,7 @@ router.use('/shifts', shiftRoutes);           // UC59
 router.use('/rosters', rosterRoutes);         // UC60
 router.use('/attendance', attendanceRoutes);   // UC61
 router.use('/payroll', payrollRoutes);         // UC62
+router.use('/categories', categoryRoutes);     // UC63
 
 router.get('/resources', function(req, res) {
   res.json({

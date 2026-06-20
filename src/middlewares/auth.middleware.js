@@ -38,6 +38,7 @@ async function authenticate(req, res, next) {
 
 function requireChainRole(req, res, next) {
   if (!req.user || req.user.type !== 'employee') {
+    console.log('[DEBUG] requireChainRole failed: Not an employee', req.user);
     return res.status(403).json({ message: 'Owner or Chain Admin role is required' });
   }
 
@@ -45,6 +46,7 @@ function requireChainRole(req, res, next) {
     return next();
   }
 
+  console.log('[DEBUG] requireChainRole failed: role is not owner/admin', req.user);
   return res.status(403).json({ message: 'Owner or Chain Admin role is required' });
 }
 
