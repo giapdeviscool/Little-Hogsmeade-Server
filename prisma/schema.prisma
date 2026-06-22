@@ -41,6 +41,7 @@ model Branch {
   events            Event[]            @relation("Event_branchId_to_Branch")
   reservations      Reservation[]      @relation("Reservation_branchId_to_Branch")
   rosters           Roster[]           @relation("Roster_branchId_to_Branch")
+  toppingGroups     ToppingGroup[]     @relation("ToppingGroup_branchId_to_Branch")
 
   @@map("branches")
 }
@@ -210,11 +211,14 @@ model MenuItemVariant {
 
 model ToppingGroup {
   id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId   String? @map("branch_id") @db.ObjectId
   name       String
   isRequired Boolean @default(false) @map("is_required")
   minSelect  Int     @default(0) @map("min_select")
   maxSelect  Int     @default(1) @map("max_select")
+  isActive   Boolean @default(true) @map("is_active")
 
+  branch Branch? @relation("ToppingGroup_branchId_to_Branch", fields: [branchId], references: [id])
   toppings              Topping[]              @relation("Topping_toppingGroupId_to_ToppingGroup")
   menuItemToppingGroups MenuItemToppingGroup[] @relation("MenuItemToppingGroup_toppingGroupId_to_ToppingGroup")
 
@@ -226,6 +230,7 @@ model Topping {
   toppingGroupId String @map("topping_group_id") @db.ObjectId
   name           String
   extraPrice     Float  @default(0.00) @map("extra_price")
+  isActive       Boolean @default(true) @map("is_active")
 
   toppingGroup ToppingGroup @relation("Topping_toppingGroupId_to_ToppingGroup", fields: [toppingGroupId], references: [id])
 
@@ -250,10 +255,14 @@ model Ingredient {
   id            String  @id @default(auto()) @map("_id") @db.ObjectId
   branchId      String  @map("branch_id") @db.ObjectId
   name          String
+  sku           String?
   unit          String
+  importUnit    String? @map("import_unit")
+  conversionRate Float? @default(1.0) @map("conversion_rate")
   category      String?
   minStockLevel Float   @default(0.00) @map("min_stock_level")
   currentStock  Float   @default(0.00) @map("current_stock")
+  isActive      Boolean @default(true) @map("is_active")
 
   branch Branch @relation("Ingredient_branchId_to_Branch", fields: [branchId], references: [id])
 
