@@ -15,6 +15,11 @@ async function findMenuItems(filters, skip, take) {
           name: true,
           displayOrder: true
         }
+      },
+      _count: {
+        select: {
+          menuItemToppingGroups: true
+        }
       }
     }
   });
@@ -60,6 +65,34 @@ async function updateMenuItemStatus(id, isActive) {
   });
 }
 
+async function findCurrentToppingGroupAssignments(menuItemId) {
+  return prisma.menuItemToppingGroup.findMany({
+    where: { menuItemId: menuItemId },
+    select: { toppingGroupId: true }
+  });
+}
+
+async function assignToppingGroups(menuItemId, toppingGroupIds) {
+  var data = toppingGroupIds.map(function(id) {
+    return {
+      menuItemId: menuItemId,
+      toppingGroupId: id
+    };
+  });
+  return prisma.menuItemToppingGroup.createMany({
+    data: data
+  });
+}
+
+async function removeToppingGroupAssignments(menuItemId, toppingGroupIds) {
+  return prisma.menuItemToppingGroup.deleteMany({
+    where: {
+      menuItemId: menuItemId,
+      toppingGroupId: { in: toppingGroupIds }
+    }
+  });
+}
+
 module.exports = {
   findMenuItems: findMenuItems,
   countMenuItems: countMenuItems,
@@ -67,5 +100,8 @@ module.exports = {
   createMenuItem: createMenuItem,
   findMenuItemById: findMenuItemById,
   countRecipesForMenuItem: countRecipesForMenuItem,
-  updateMenuItemStatus: updateMenuItemStatus
+  updateMenuItemStatus: updateMenuItemStatus,
+  findCurrentToppingGroupAssignments: findCurrentToppingGroupAssignments,
+  assignToppingGroups: assignToppingGroups,
+  removeToppingGroupAssignments: removeToppingGroupAssignments
 };

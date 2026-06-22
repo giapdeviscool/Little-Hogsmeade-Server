@@ -255,10 +255,14 @@ model Ingredient {
   id            String  @id @default(auto()) @map("_id") @db.ObjectId
   branchId      String  @map("branch_id") @db.ObjectId
   name          String
+  sku           String?
   unit          String
+  importUnit    String? @map("import_unit")
+  conversionRate Float? @default(1.0) @map("conversion_rate")
   category      String?
   minStockLevel Float   @default(0.00) @map("min_stock_level")
   currentStock  Float   @default(0.00) @map("current_stock")
+  isActive      Boolean @default(true) @map("is_active")
 
   branch Branch @relation("Ingredient_branchId_to_Branch", fields: [branchId], references: [id])
 

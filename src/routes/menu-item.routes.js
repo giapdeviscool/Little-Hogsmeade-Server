@@ -19,4 +19,14 @@ router.post('/',
 // UC67: Update item status
 router.patch('/:id/status', authMiddleware.authenticate, menuItemController.updateStatus);
 
+var menuItemToppingController = require('../controllers/menu-item-topping.controller');
+
+// UC69: Assign Topping Groups
+router.get('/:id/topping-groups', authMiddleware.authenticate, authMiddleware.requireChainRole, menuItemToppingController.getMenuItemToppings);
+router.put('/:id/topping-groups', authMiddleware.authenticate, authMiddleware.requireChainRole, menuItemToppingController.assignToppingGroups);
+
+var recipeController = require('../controllers/recipe.controller');
+// UC71 & UC72: Set up and Update ingredient quantities
+router.put('/:id/recipes', authMiddleware.authenticate, authMiddleware.requireChainRole, recipeController.setMenuItemRecipes);
+
 module.exports = router;

@@ -8,13 +8,17 @@ async function getMenuItems(query, user) {
   var filters = {};
 
   // Role-based data isolation
-  var roleName = user.roleName || '';
-  if (roleName === 'Owner') {
+  var roleName = (user.roleName || '').trim().toLowerCase();
+  var isOwner = roleName.includes('owner');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isCashier = roleName.includes('cashier');
+
+  if (isOwner) {
     // Owner sees all, or can filter by branchId explicitly if passed
     if (query.branchId) {
       filters.branchId = query.branchId;
     }
-  } else if (roleName === 'Chain Admin' || roleName === 'Cashier') {
+  } else if (isAdmin || isCashier) {
     // See global items (branchId: null) or their branch items
     filters.OR = [
       { branchId: null },
@@ -80,11 +84,14 @@ async function createMenuItem(data, user, fileUrl) {
   }
 
   var branchId = null;
-  var roleName = user.roleName || '';
-  if (roleName === 'Owner') {
+  var roleName = (user.roleName || '').trim().toLowerCase();
+  var isOwner = roleName.includes('owner');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+
+  if (isOwner) {
     // Owner creates for all branches (global) or can specify branchId if needed
     branchId = data.branchId || null;
-  } else if (roleName === 'Chain Admin') {
+  } else if (isAdmin) {
     branchId = user.branchId;
   } else {
     var errRole = new Error('Không có quyền tạo món ăn');
@@ -108,8 +115,12 @@ async function createMenuItem(data, user, fileUrl) {
 }
 
 async function updateMenuItemStatus(id, isActive, user) {
-  var roleName = user.roleName || '';
-  if (roleName !== 'Owner' && roleName !== 'Chain Admin' && roleName !== 'Cashier') {
+  var roleName = (user.roleName || '').trim().toLowerCase();
+  var isOwner = roleName.includes('owner');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isCashier = roleName.includes('cashier');
+
+  if (!isOwner && !isAdmin && !isCashier) {
     var errRole = new Error('Không có quyền cập nhật trạng thái món ăn');
     errRole.status = 403;
     throw errRole;
@@ -122,7 +133,7 @@ async function updateMenuItemStatus(id, isActive, user) {
     throw errNotFound;
   }
 
-  if (roleName === 'Chain Admin' || roleName === 'Cashier') {
+  if (isAdmin || isCashier) {
     if (item.branchId !== null && item.branchId !== user.branchId) {
       var errBranch = new Error('Không có quyền cập nhật món ăn của chi nhánh khác');
       errBranch.status = 403;

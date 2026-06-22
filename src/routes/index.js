@@ -17,6 +17,8 @@ var uploadRoutes = require("./upload.routes");
 var menuItemRoutes = require("./menu-item.routes");
 var categoryRoutes = require("./category.routes");
 var toppingGroupRoutes = require("./topping-group.routes");
+var recipeRoutes = require("./recipe.routes");
+var ingredientRoutes = require("./ingredient.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 var router = express.Router();
@@ -38,6 +40,8 @@ router.use("/uploads", uploadRoutes);
 router.use("/menu-items", menuItemRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/topping-groups", toppingGroupRoutes);
+router.use("/recipes", recipeRoutes);
+router.use("/ingredients", ingredientRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({
@@ -59,7 +63,8 @@ resourcesConfig.getResources().forEach(function (resource) {
     resource.name === "events" ||
     resource.name === "menu_items" ||
     resource.name === "categories" ||
-    resource.name === "topping_groups"
+    resource.name === "topping_groups" ||
+    resource.name === "ingredients"
   ) {
     return;
   }
