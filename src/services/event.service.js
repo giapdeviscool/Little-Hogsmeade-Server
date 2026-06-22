@@ -6,12 +6,34 @@ async function getEvents(query) {
   var limit = Math.min(parsePositiveInt(query.limit, 20), 100);
   var skip = (page - 1) * limit;
 
+  var where = {};
+
+  if (query.search) {
+    var searchStr = String(query.search).trim();
+    where.OR = [
+      { title: { contains: searchStr, mode: 'insensitive' } },
+      { description: { contains: searchStr, mode: 'insensitive' } },
+      { locationNote: { contains: searchStr, mode: 'insensitive' } }
+    ];
+  }
+
+  if (query.branchId && query.branchId !== 'all') {
+    where.branchId = String(query.branchId).trim();
+  }
+
+  if (query.status === 'published') {
+    where.isPublished = true;
+  } else if (query.status === 'draft') {
+    where.isPublished = false;
+  }
+
   var items = await eventRepository.findMany({
+    where: where,
     skip: skip,
     take: limit,
     orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
   });
-  var total = await eventRepository.count({});
+  var total = await eventRepository.count(where);
 
   return {
     items: items,

@@ -171,10 +171,13 @@ function createCampaign(data) {
   return prisma.campaign.create({ data: data });
 }
 
-function findCampaigns() {
-  return prisma.campaign.findMany({
-    orderBy: { startDate: 'desc' }
-  });
+function findCampaigns(options) {
+  var defaultOptions = { orderBy: { startDate: 'desc' } };
+  return prisma.campaign.findMany(options ? Object.assign({}, defaultOptions, options) : defaultOptions);
+}
+
+function countCampaigns(where) {
+  return prisma.campaign.count({ where: where || {} });
 }
 
 function updateCampaign(id, data) {
@@ -205,6 +208,7 @@ module.exports = {
   updateBranchMenuItemPrices: updateBranchMenuItemPrices,
   createCampaign: createCampaign,
   findCampaigns: findCampaigns,
+  countCampaigns: countCampaigns,
   updateCampaign: updateCampaign,
   deleteCampaign: deleteCampaign
 };
