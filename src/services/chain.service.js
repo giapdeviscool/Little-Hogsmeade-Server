@@ -195,6 +195,18 @@ async function updatePromotion(id, payload) {
   return chainRepository.updateCampaign(id, data);
 }
 
+async function togglePromotionStatus(id) {
+  assertValidObjectId(id, 'promotion id');
+  var promotion = await chainRepository.findCampaignById(id);
+
+  if (!promotion) {
+    throwHttpError(404, 'Promotion not found');
+  }
+
+  var newStatus = !promotion.isActive;
+  return chainRepository.updateCampaign(id, { isActive: newStatus });
+}
+
 async function deletePromotion(id) {
   return chainRepository.deleteCampaign(id);
 }
@@ -387,6 +399,7 @@ module.exports = {
   createPromotion: createPromotion,
   getPromotions: getPromotions,
   updatePromotion: updatePromotion,
+  togglePromotionStatus: togglePromotionStatus,
   deletePromotion: deletePromotion,
   getMenuSyncPreview: getMenuSyncPreview
 };

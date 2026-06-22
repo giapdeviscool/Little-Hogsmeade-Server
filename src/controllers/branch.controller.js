@@ -27,9 +27,9 @@ async function updateBranch(req, res, next) {
   }
 }
 
-async function deactivateBranch(req, res, next) {
+async function toggleBranchStatus(req, res, next) {
   try {
-    var branch = await branchService.deactivateBranch(req.params.id);
+    var branch = await branchService.toggleBranchStatus(req.params.id);
     res.json({ data: branch });
   } catch (error) {
     next(error);
@@ -40,5 +40,5 @@ module.exports = {
   getBranches: getBranches,
   createBranch: createBranch,
   updateBranch: updateBranch,
-  deactivateBranch: deactivateBranch
+  toggleBranchStatus: toggleBranchStatus
 };

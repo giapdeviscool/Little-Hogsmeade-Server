@@ -50,21 +50,25 @@ async function updateBranch(id, payload) {
   return branchRepository.update(id, data);
 }
 
-async function deactivateBranch(id) {
+async function toggleBranchStatus(id) {
   assertValidObjectId(id, 'branch id');
-  await getBranchOrThrow(id);
+  var branch = await getBranchOrThrow(id);
 
-  var pendingOrders = await branchRepository.hasPendingOrders(id);
-  if (pendingOrders > 0) {
-    throwHttpError(400, 'Cannot deactivate branch with pending orders');
+  if (branch.status === 'active') {
+    var pendingOrders = await branchRepository.hasPendingOrders(id);
+    if (pendingOrders > 0) {
+      throwHttpError(400, 'Cannot deactivate branch with pending orders');
+    }
+
+    var reservedTables = await branchRepository.hasReservedTables(id);
+    if (reservedTables > 0) {
+      throwHttpError(400, 'Cannot deactivate branch with reserved tables');
+    }
+
+    return branchRepository.update(id, { status: 'inactive' });
   }
 
-  var reservedTables = await branchRepository.hasReservedTables(id);
-  if (reservedTables > 0) {
-    throwHttpError(400, 'Cannot deactivate branch with reserved tables');
-  }
-
-  return branchRepository.update(id, { status: 'inactive' });
+  return branchRepository.update(id, { status: 'active' });
 }
 
 async function getBranchOrThrow(id) {
@@ -222,5 +226,5 @@ module.exports = {
   getBranches: getBranches,
   createBranch: createBranch,
   updateBranch: updateBranch,
-  deactivateBranch: deactivateBranch
+  toggleBranchStatus: toggleBranchStatus
 };
