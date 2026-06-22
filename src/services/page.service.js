@@ -104,6 +104,22 @@ function normalizePagePayload(payload, isCreate) {
     data.isPublished = parseBoolean(payload.isPublished, "isPublished");
   }
 
+  if (payload.imageUrl !== undefined) {
+    data.imageUrl = payload.imageUrl;
+  }
+
+  if (payload.aboutTitle !== undefined) {
+    data.aboutTitle = payload.aboutTitle;
+  }
+
+  if (payload.aboutContent !== undefined) {
+    data.aboutContent = payload.aboutContent;
+  }
+
+  if (payload.yearsOfExperience !== undefined) {
+    data.yearsOfExperience = parsePositiveInt(payload.yearsOfExperience, null);
+  }
+
   if (Object.keys(data).length === 0) {
     throwHttpError(400, "Request body must include at least one valid field");
   }

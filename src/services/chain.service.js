@@ -153,6 +153,15 @@ async function getPromotions() {
   return chainRepository.findCampaigns();
 }
 
+async function updatePromotion(id, payload) {
+  var data = normalizePromotionPayload(payload);
+  return chainRepository.updateCampaign(id, data);
+}
+
+async function deletePromotion(id) {
+  return chainRepository.deleteCampaign(id);
+}
+
 async function getMenuSyncPreview() {
   var categories = await chainRepository.findStandardCategories();
   var menuItems = await chainRepository.findStandardMenuItems();
@@ -332,5 +341,7 @@ module.exports = {
   updatePricing: updatePricing,
   createPromotion: createPromotion,
   getPromotions: getPromotions,
+  updatePromotion: updatePromotion,
+  deletePromotion: deletePromotion,
   getMenuSyncPreview: getMenuSyncPreview
 };

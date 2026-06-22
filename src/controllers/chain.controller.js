@@ -63,6 +63,24 @@ async function getPromotions(req, res, next) {
   }
 }
 
+async function updatePromotion(req, res, next) {
+  try {
+    var result = await chainService.updatePromotion(req.params.id, req.body);
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deletePromotion(req, res, next) {
+  try {
+    var result = await chainService.deletePromotion(req.params.id);
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getMenuSyncPreview(req, res, next) {
   try {
     var result = await chainService.getMenuSyncPreview();
@@ -80,5 +98,7 @@ module.exports = {
   updatePricing: updatePricing,
   createPromotion: createPromotion,
   getPromotions: getPromotions,
+  updatePromotion: updatePromotion,
+  deletePromotion: deletePromotion,
   getMenuSyncPreview: getMenuSyncPreview
 };
