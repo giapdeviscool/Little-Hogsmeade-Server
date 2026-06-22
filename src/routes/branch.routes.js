@@ -4,10 +4,10 @@ var authMiddleware = require('../middlewares/auth.middleware');
 
 var router = express.Router();
 
+router.get('/', branchController.getBranches);
+
 router.use(authMiddleware.authenticate);
 router.use(authMiddleware.requireChainRole);
-
-router.get('/', branchController.getBranches);
 router.post('/', authMiddleware.requireOwner, branchController.createBranch);
 router.put('/:id', branchController.updateBranch);
 router.patch('/:id/deactivate', branchController.deactivateBranch);

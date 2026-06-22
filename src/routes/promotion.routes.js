@@ -4,10 +4,13 @@ var authMiddleware = require('../middlewares/auth.middleware');
 
 var router = express.Router();
 
+router.get('/', chainController.getPromotions);
+
 router.use(authMiddleware.authenticate);
 router.use(authMiddleware.requireChainRole);
 
-router.get('/', chainController.getPromotions);
 router.post('/', chainController.createPromotion);
+router.patch('/:id', chainController.updatePromotion);
+router.delete('/:id', chainController.deletePromotion);
 
 module.exports = router;
