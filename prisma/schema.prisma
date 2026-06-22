@@ -640,9 +640,13 @@ model Page {
   branchId    String?  @map("branch_id") @db.ObjectId
   slug        String   @unique
   title       String
-  content     String
-  isPublished Boolean  @default(true) @map("is_published")
-  updatedAt   DateTime @default(now()) @map("updated_at")
+  content           String
+  imageUrl          String?  @map("image_url")
+  aboutTitle        String?  @map("about_title")
+  aboutContent      String?  @map("about_content")
+  yearsOfExperience Int?     @map("years_of_experience")
+  isPublished       Boolean  @default(true) @map("is_published")
+  updatedAt         DateTime @default(now()) @map("updated_at")
 
   branch Branch? @relation("Page_branchId_to_Branch", fields: [branchId], references: [id])
 
