@@ -149,8 +149,45 @@ async function createPromotion(payload) {
   return chainRepository.createCampaign(data);
 }
 
-async function getPromotions() {
-  return chainRepository.findCampaigns();
+async function getPromotions(query) {
+  var page = parsePositiveInt(query.page, 1);
+  var limit = Math.min(parsePositiveInt(query.limit, 20), 100);
+  var skip = (page - 1) * limit;
+
+  var where = {};
+
+  if (query.search) {
+    var searchStr = String(query.search).trim();
+    where.OR = [
+      { name: { contains: searchStr, mode: 'insensitive' } },
+      { description: { contains: searchStr, mode: 'insensitive' } }
+    ];
+  }
+
+  if (query.status === 'active') {
+    where.isActive = true;
+  } else if (query.status === 'inactive') {
+    where.isActive = false;
+  }
+
+  var items = await chainRepository.findCampaigns({
+    where: where,
+    skip: skip,
+    take: limit,
+    orderBy: { startDate: 'desc' }
+  });
+  
+  var total = await chainRepository.countCampaigns(where);
+
+  return {
+    items: items,
+    pagination: {
+      page: page,
+      limit: limit,
+      total: total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
 }
 
 async function updatePromotion(id, payload) {
@@ -343,6 +380,14 @@ function throwHttpError(statusCode, message) {
   var error = new Error(message);
   error.statusCode = statusCode;
   throw error;
+}
+
+function parsePositiveInt(value, fallback) {
+  var parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
 }
 
 module.exports = {

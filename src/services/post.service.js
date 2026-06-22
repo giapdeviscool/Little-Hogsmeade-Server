@@ -7,12 +7,35 @@ async function getPosts(query) {
   var limit = Math.min(parsePositiveInt(query.limit, 20), 100);
   var skip = (page - 1) * limit;
 
+  var where = {};
+
+  if (query.search) {
+    var searchStr = String(query.search).trim();
+    where.OR = [
+      { title: { contains: searchStr, mode: 'insensitive' } },
+      { slug: { contains: searchStr, mode: 'insensitive' } },
+      { category: { contains: searchStr, mode: 'insensitive' } },
+      { tags: { contains: searchStr, mode: 'insensitive' } }
+    ];
+  }
+
+  if (query.category && query.category !== 'all') {
+    where.category = String(query.category).trim();
+  }
+
+  if (query.status === 'published') {
+    where.isPublished = true;
+  } else if (query.status === 'draft') {
+    where.isPublished = false;
+  }
+
   var items = await postRepository.findMany({
+    where: where,
     skip: skip,
     take: limit,
     orderBy: [{ publishedAt: "desc" }, { title: "asc" }],
   });
-  var total = await postRepository.count({});
+  var total = await postRepository.count(where);
 
   return {
     items: items,

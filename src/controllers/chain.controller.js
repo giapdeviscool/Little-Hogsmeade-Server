@@ -56,7 +56,7 @@ async function createPromotion(req, res, next) {
 
 async function getPromotions(req, res, next) {
   try {
-    var result = await chainService.getPromotions();
+    var result = await chainService.getPromotions(req.query || {});
     res.json({ data: result });
   } catch (error) {
     next(error);
