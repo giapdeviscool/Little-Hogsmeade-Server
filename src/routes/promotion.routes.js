@@ -10,7 +10,8 @@ router.use(authMiddleware.authenticate);
 router.use(authMiddleware.requireChainRole);
 
 router.post('/', chainController.createPromotion);
-router.patch('/:id', chainController.updatePromotion);
+router.put('/:id', chainController.updatePromotion);
+router.patch('/:id/toggle-status', chainController.togglePromotionStatus);
 router.delete('/:id', chainController.deletePromotion);
 
 module.exports = router;

@@ -54,7 +54,6 @@ async function toggleBranchStatus(id) {
   assertValidObjectId(id, 'branch id');
   var branch = await getBranchOrThrow(id);
 
-  // If branch is currently active, check constraints before deactivating
   if (branch.status === 'active') {
     var pendingOrders = await branchRepository.hasPendingOrders(id);
     if (pendingOrders > 0) {
@@ -69,7 +68,6 @@ async function toggleBranchStatus(id) {
     return branchRepository.update(id, { status: 'inactive' });
   }
 
-  // If branch is inactive, activate it
   return branchRepository.update(id, { status: 'active' });
 }
 

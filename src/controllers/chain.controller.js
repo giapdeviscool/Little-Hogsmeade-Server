@@ -72,6 +72,15 @@ async function updatePromotion(req, res, next) {
   }
 }
 
+async function togglePromotionStatus(req, res, next) {
+  try {
+    var result = await chainService.togglePromotionStatus(req.params.id);
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function deletePromotion(req, res, next) {
   try {
     var result = await chainService.deletePromotion(req.params.id);
@@ -99,6 +108,7 @@ module.exports = {
   createPromotion: createPromotion,
   getPromotions: getPromotions,
   updatePromotion: updatePromotion,
+  togglePromotionStatus: togglePromotionStatus,
   deletePromotion: deletePromotion,
   getMenuSyncPreview: getMenuSyncPreview
 };

@@ -177,6 +177,12 @@ function findCampaigns() {
   });
 }
 
+function findCampaignById(id) {
+  return prisma.campaign.findUnique({
+    where: { id: id }
+  });
+}
+
 function updateCampaign(id, data) {
   return prisma.campaign.update({
     where: { id: id },
@@ -205,6 +211,7 @@ module.exports = {
   updateBranchMenuItemPrices: updateBranchMenuItemPrices,
   createCampaign: createCampaign,
   findCampaigns: findCampaigns,
+  findCampaignById: findCampaignById,
   updateCampaign: updateCampaign,
   deleteCampaign: deleteCampaign
 };
