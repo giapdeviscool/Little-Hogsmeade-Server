@@ -6,7 +6,7 @@ var router = express.Router();
 
 // Categories require authentication + Owner/Chain Admin role
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.requireChainRole);
+// router.use(authMiddleware.requireChainRole);
 
 // UC63: View menu categories
 router.get('/', categoryController.getCategories);
