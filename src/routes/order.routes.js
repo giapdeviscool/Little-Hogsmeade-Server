@@ -7,6 +7,11 @@ var orderValidator = require('../validators/order.validator');
 var router = express.Router();
 
 router.post('/', authMiddleware.authenticate, validate(orderValidator.createOrderSchema), orderController.createOrder);
+router.post('/:id/change-table',
+  authMiddleware.authenticate,
+  validate(orderValidator.changeTableSchema),
+  orderController.changeTable
+);
 router.patch('/:id/status', authMiddleware.authenticate, validate(orderValidator.updateOrderStatusSchema), orderController.updateOrderStatus);
 router.delete('/:id', authMiddleware.authenticate, orderController.deleteOrder);
 

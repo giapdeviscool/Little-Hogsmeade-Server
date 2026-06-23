@@ -22,6 +22,23 @@ async function updateOrderStatus(req, res, next) {
   }
 }
 
+async function changeTable(req, res, next) {
+  try {
+    var result = await orderService.changeOrderTable(
+      req.params.id,
+      req.body.targetTableId,
+      req.user
+    );
+    res.json({
+      status: 'success',
+      message: 'Table changed successfully',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function deleteOrder(req, res, next) {
   try {
     await orderService.deleteOrder(req.params.id);
@@ -34,5 +51,6 @@ async function deleteOrder(req, res, next) {
 module.exports = {
   createOrder: createOrder,
   updateOrderStatus: updateOrderStatus,
+  changeTable: changeTable,
   deleteOrder: deleteOrder
 };

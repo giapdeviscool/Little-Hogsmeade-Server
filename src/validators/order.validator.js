@@ -109,7 +109,16 @@ var updateOrderStatusSchema = {
   }
 };
 
+var changeTableSchema = {
+  targetTableId: {
+    required: true,
+    validate: isValidObjectId,
+    message: 'targetTableId must be a valid object id'
+  }
+};
+
 module.exports = {
   createOrderSchema: createOrderSchema,
-  updateOrderStatusSchema: updateOrderStatusSchema
+  updateOrderStatusSchema: updateOrderStatusSchema,
+  changeTableSchema: changeTableSchema
 };

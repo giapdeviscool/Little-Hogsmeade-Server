@@ -1,7 +1,7 @@
 var env = require('../src/config/env');
 var prisma = require('../src/lib/prisma');
 
-var BRANCH_NAME = 'M4 - Little Hogsmeade Flagship';
+var BRANCH_NAME = 'Little Hogsmeade Flagship';
 
 var LAYOUT = [
   {
@@ -56,7 +56,7 @@ async function main() {
   }
 
   console.log('[seed] Table layout completed for ' + branch.name);
-  console.log('[seed] Areas: ' + LAYOUT.length + ', tables: ' + createdTables + ', status: available');
+  console.log('[seed] Areas: ' + LAYOUT.length + ', tables: ' + createdTables + ', existing POS state preserved');
 }
 
 async function upsertArea(branchId, data) {
@@ -91,25 +91,24 @@ async function upsertTable(areaId, name, capacity) {
     }
   });
 
-  var data = {
-    name: name,
-    capacity: capacity,
-    status: 'available',
-    currentOrderId: null,
-    reservationId: null,
-    guestCount: null,
-    note: null
-  };
-
   if (existing) {
     return prisma.table.update({
       where: { id: existing.id },
-      data: data
+      // Layout seed must not reset live POS state or unlink orders/reservations.
+      data: {
+        name: name,
+        capacity: capacity
+      }
     });
   }
 
   return prisma.table.create({
-    data: Object.assign({ areaId: areaId }, data)
+    data: {
+      areaId: areaId,
+      name: name,
+      capacity: capacity,
+      status: 'available'
+    }
   });
 }
 

@@ -70,6 +70,55 @@ function findTableById(id) {
   });
 }
 
+function findTableWithBranchById(id) {
+  return prisma.table.findUnique({
+    where: { id: id },
+    select: {
+      id: true,
+      name: true,
+      guestCount: true,
+      area: {
+        select: { branchId: true }
+      }
+    }
+  });
+}
+
+function findCurrentOrderByTableId(tableId) {
+  return prisma.order.findFirst({
+    where: {
+      tableId: tableId,
+      status: { in: ['PENDING', 'pending'] }
+    },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      orderItems: {
+        select: {
+          quantity: true,
+          unitPrice: true,
+          subtotal: true,
+          menuItem: {
+            select: { name: true }
+          },
+          variant: {
+            select: { name: true }
+          }
+        }
+      }
+    }
+  });
+}
+
+function findActiveReservationByTableId(tableId) {
+  return prisma.reservation.findFirst({
+    where: {
+      tableId: tableId,
+      status: { in: ['pending', 'confirmed', 'reserved', 'PENDING', 'CONFIRMED', 'RESERVED'] }
+    },
+    orderBy: { reservedDate: 'asc' }
+  });
+}
+
 function hasPendingOrder(tableId) {
   return prisma.order.count({
     where: {
@@ -100,6 +149,9 @@ module.exports = {
   findBranchById: findBranchById,
   findAreasWithTables: findAreasWithTables,
   findTableById: findTableById,
+  findTableWithBranchById: findTableWithBranchById,
+  findCurrentOrderByTableId: findCurrentOrderByTableId,
+  findActiveReservationByTableId: findActiveReservationByTableId,
   hasPendingOrder: hasPendingOrder,
   findReservationById: findReservationById,
   updateTable: updateTable

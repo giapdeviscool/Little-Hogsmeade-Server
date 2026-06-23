@@ -73,6 +73,72 @@ async function updateTableStatus(tableId, payload, currentUser) {
   return updatedTable;
 }
 
+async function getCurrentOrder(tableId, currentUser) {
+  assertValidObjectId(tableId, 'table id');
+
+  var table = await tableRepository.findTableWithBranchById(tableId);
+  if (!table) {
+    throwHttpError(404, 'Table not found');
+  }
+
+  assertEmployeeAccess(currentUser, table.area.branchId);
+
+  var order = await tableRepository.findCurrentOrderByTableId(tableId);
+  if (!order) {
+    throwHttpError(404, 'No pending order found for this table');
+  }
+
+  var items = order.orderItems.map(function(item) {
+    return {
+      name: item.variant ? item.menuItem.name + ' - ' + item.variant.name : item.menuItem.name,
+      quantity: item.quantity,
+      price: item.unitPrice
+    };
+  });
+
+  return {
+    table_id: table.id,
+    table_name: table.name,
+    order_id: order.id,
+    order_code: 'ORD-' + order.id.slice(-4).toUpperCase(),
+    guest_count: table.guestCount,
+    created_at: order.createdAt,
+    total_amount: order.orderItems.reduce(function(total, item) {
+      return total + item.subtotal;
+    }, 0),
+    items: items
+  };
+}
+
+async function getTableReservation(tableId, currentUser) {
+  assertValidObjectId(tableId, 'table id');
+
+  var table = await tableRepository.findTableWithBranchById(tableId);
+  if (!table) {
+    throwHttpError(404, 'Table not found');
+  }
+
+  assertEmployeeAccess(currentUser, table.area.branchId);
+
+  var reservation = await tableRepository.findActiveReservationByTableId(tableId);
+  if (!reservation) {
+    throwHttpError(404, 'No active reservation found for this table');
+  }
+
+  return {
+    table_id: table.id,
+    table_name: table.name,
+    reservation_id: reservation.id,
+    guest_name: reservation.guestName,
+    guest_phone: reservation.guestPhone,
+    guest_count: reservation.guestCount,
+    reserved_date: reservation.reservedDate,
+    reserved_time: reservation.reservedTime,
+    note: reservation.note,
+    status: reservation.status
+  };
+}
+
 async function buildStatusUpdateData(table, status, payload) {
   if (status === 'available') {
     var pendingOrderCount = await tableRepository.hasPendingOrder(table.id);
@@ -164,5 +230,7 @@ function throwHttpError(statusCode, message) {
 
 module.exports = {
   getTableLayout: getTableLayout,
+  getCurrentOrder: getCurrentOrder,
+  getTableReservation: getTableReservation,
   updateTableStatus: updateTableStatus
 };

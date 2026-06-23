@@ -9,7 +9,8 @@
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
     "db:seed": "node ./seeds/module4.seed.js",
-    "db:seed-tables": "node ./seeds/table.seed.js"
+    "db:seed-tables": "node ./seeds/table.seed.js",
+    "db:seed-pos-tables": "node ./seeds/table2.seed.js"
   },
   "prisma": {
     "seed": "node ./seeds/module4.seed.js"
