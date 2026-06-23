@@ -55,6 +55,20 @@ function validateOrderItem(item) {
 }
 
 var createOrderSchema = {
+  tableId: {
+    required: false,
+    validate: function(value) {
+      return value === undefined || value === null || isValidObjectId(value);
+    },
+    message: 'tableId must be a valid object id'
+  },
+  orderType: {
+    required: false,
+    validate: function(value) {
+      return value === undefined || typeof value === 'string';
+    },
+    message: 'orderType must be a string'
+  },
   customerId: {
     required: false,
     validate: function(value) {
@@ -109,7 +123,27 @@ var updateOrderStatusSchema = {
   }
 };
 
+var addOrderItemsSchema = {
+  items: {
+    required: true,
+    validate: function(value) {
+      return Array.isArray(value) && value.length > 0 && value.every(validateOrderItem);
+    },
+    message: 'items must be a non-empty array of valid order items'
+  }
+};
+
+var changeTableSchema = {
+  targetTableId: {
+    required: true,
+    validate: isValidObjectId,
+    message: 'targetTableId must be a valid object id'
+  }
+};
+
 module.exports = {
   createOrderSchema: createOrderSchema,
-  updateOrderStatusSchema: updateOrderStatusSchema
+  addOrderItemsSchema: addOrderItemsSchema,
+  updateOrderStatusSchema: updateOrderStatusSchema,
+  changeTableSchema: changeTableSchema
 };
