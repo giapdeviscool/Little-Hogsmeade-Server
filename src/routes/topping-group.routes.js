@@ -5,6 +5,7 @@ var authMiddleware = require('../middlewares/auth.middleware');
 
 router.get('/', authMiddleware.authenticate, authMiddleware.requireChainRole, toppingGroupController.getToppingGroups);
 router.post('/', authMiddleware.authenticate, authMiddleware.requireChainRole, toppingGroupController.createToppingGroup);
+router.put('/:id', authMiddleware.authenticate, authMiddleware.requireChainRole, toppingGroupController.updateToppingGroup);
 router.delete('/:id', authMiddleware.authenticate, authMiddleware.requireChainRole, toppingGroupController.softDeleteToppingGroup);
 
 module.exports = router;

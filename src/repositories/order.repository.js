@@ -36,6 +36,17 @@ function createOrder(data, tx) {
     delete createData.customer;
   }
 
+  // Handle optional tableId as a relation, like branch and employee above.
+  if (createData.tableId && !createData.table) {
+    createData.table = { connect: { id: createData.tableId } };
+    delete createData.tableId;
+  }
+
+  if (createData.tableId === null) {
+    delete createData.tableId;
+    delete createData.table;
+  }
+
   // DEBUG: show what is being sent to Prisma (remove in production)
   try {
     console.log('[order.repository] createData:', JSON.stringify(createData));
@@ -155,6 +166,13 @@ function updatePaymentStatusByInvoiceId(invoiceId, status, tx) {
   });
 }
 
+function updatePaymentAmountByInvoiceId(invoiceId, amount, tx) {
+  return getDb(tx).payment.updateMany({
+    where: { invoiceId: invoiceId },
+    data: { amount: amount }
+  });
+}
+
 function findOrderItemsByOrderId(orderId, tx) {
   return getDb(tx).orderItem.findMany({
     where: { orderId: orderId }
@@ -214,6 +232,7 @@ module.exports = {
   findInvoiceByOrderId: findInvoiceByOrderId,
   updateInvoiceStatusByOrderId: updateInvoiceStatusByOrderId,
   updatePaymentStatusByInvoiceId: updatePaymentStatusByInvoiceId,
+  updatePaymentAmountByInvoiceId: updatePaymentAmountByInvoiceId,
   findOrderItemsByOrderId: findOrderItemsByOrderId,
   deleteOrderItemToppingsByOrderItemIds: deleteOrderItemToppingsByOrderItemIds,
   deleteOrderItemsByOrderId: deleteOrderItemsByOrderId,
