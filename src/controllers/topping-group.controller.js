@@ -34,8 +34,22 @@ async function softDeleteToppingGroup(req, res, next) {
   }
 }
 
+async function updateToppingGroup(req, res, next) {
+  try {
+    var id = req.params.id;
+    var result = await toppingGroupService.updateToppingGroup(id, req.body, req.user);
+    res.json({ message: 'Cập nhật nhóm Topping thành công', data: result });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
+    }
+    next(error);
+  }
+}
+
 module.exports = {
   getToppingGroups: getToppingGroups,
   createToppingGroup: createToppingGroup,
+  updateToppingGroup: updateToppingGroup,
   softDeleteToppingGroup: softDeleteToppingGroup
 };

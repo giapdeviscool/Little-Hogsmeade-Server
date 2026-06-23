@@ -272,5 +272,6 @@ function throwHttpError(statusCode, message) {
 module.exports = {
   register: register,
   login: login,
-  verifyToken: verifyToken
+  verifyToken: verifyToken,
+  hashPassword: hashPassword
 };

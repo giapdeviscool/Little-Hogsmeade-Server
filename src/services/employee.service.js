@@ -1,6 +1,7 @@
 var bcrypt = require('bcryptjs');
 var employeeRepository = require('../repositories/employee.repository');
 var authMiddleware = require('../middlewares/auth.middleware');
+var authService = require('./auth.service');
 
 var SALT_ROUNDS = 10;
 var PIN_LENGTH = 6;
@@ -106,6 +107,9 @@ async function createEmployee(payload, currentUser) {
   var hashedPin = await bcrypt.hash(rawPin, SALT_ROUNDS);
 
   // BR-HR11: Default status = "active"
+  // Set default password '123456' for web dashboard login
+  var defaultPasswordHash = authService.hashPassword('123456');
+
   var employeeData = {
     fullName: data.fullName,
     phone: data.phone,
@@ -116,6 +120,7 @@ async function createEmployee(payload, currentUser) {
     hiredDate: data.hiredDate || new Date(),
     avatarUrl: data.avatarUrl || null,
     pinCode: hashedPin,
+    passwordHash: defaultPasswordHash,
     status: 'active'
   };
 
