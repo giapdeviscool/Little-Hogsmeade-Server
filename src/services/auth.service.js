@@ -1,6 +1,7 @@
 var crypto = require('crypto');
 var env = require('../config/env');
 var authRepository = require('../repositories/auth.repository');
+var jwtUtils = require('../utils/jwt');
 
 var TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
 
@@ -231,32 +232,7 @@ function signToken(payload) {
 }
 
 function verifyToken(token) {
-  var parts = token.split('.');
-
-  if (parts.length !== 3) {
-    throw new Error('Invalid token format');
-  }
-
-  var encodedHeader = parts[0];
-  var encodedBody = parts[1];
-  var signature = parts[2];
-  var expectedSignature = crypto
-    .createHmac('sha256', env.jwtSecret)
-    .update(encodedHeader + '.' + encodedBody)
-    .digest('base64url');
-
-  if (signature !== expectedSignature) {
-    throw new Error('Invalid token signature');
-  }
-
-  var payload = JSON.parse(Buffer.from(encodedBody, 'base64url').toString());
-  var now = Math.floor(Date.now() / 1000);
-
-  if (payload.exp < now) {
-    throw new Error('Token expired');
-  }
-
-  return payload;
+  return jwtUtils.verifyJwt(token);
 }
 
 function base64Url(value) {
