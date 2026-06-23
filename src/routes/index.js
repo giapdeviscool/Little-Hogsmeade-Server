@@ -20,6 +20,7 @@ var categoryRoutes = require("./category.routes");
 var toppingGroupRoutes = require("./topping-group.routes");
 var recipeRoutes = require("./recipe.routes");
 var ingredientRoutes = require("./ingredient.routes");
+var tableRoutes = require("./table.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 var router = express.Router();
@@ -44,6 +45,7 @@ router.use("/categories", categoryRoutes);
 router.use("/topping-groups", toppingGroupRoutes);
 router.use("/recipes", recipeRoutes);
 router.use("/ingredients", ingredientRoutes);
+router.use("/tables", tableRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({
