@@ -14,6 +14,7 @@ var bannerRoutes = require("./banner.routes");
 var postRoutes = require("./post.routes");
 var eventRoutes = require("./event.routes");
 var uploadRoutes = require("./upload.routes");
+var tableRoutes = require('./table.routes');
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 
@@ -34,6 +35,7 @@ router.use("/banners", bannerRoutes);
 router.use("/posts", postRoutes);
 router.use("/events", eventRoutes);
 router.use("/uploads", uploadRoutes);
+router.use('/tables', tableRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({

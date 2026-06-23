@@ -292,12 +292,17 @@ model Area {
 }
 
 model Table {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  areaId    String  @map("area_id") @db.ObjectId
-  name      String
-  capacity  Int     @default(2)
-  status    String  @default("available")
-  qrCodeUrl String? @map("qr_code_url")
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  areaId           String   @map("area_id") @db.ObjectId
+  name             String
+  capacity         Int      @default(2)
+  status           String   @default("available")
+  currentOrderId   String?  @map("current_order_id") @db.ObjectId
+  reservationId    String?  @map("reservation_id") @db.ObjectId
+  guestCount       Int?     @map("guest_count")
+  note             String?
+  qrCodeUrl        String?  @map("qr_code_url")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   area Area @relation("Table_areaId_to_Area", fields: [areaId], references: [id])
 

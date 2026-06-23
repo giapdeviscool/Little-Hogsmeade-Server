@@ -10,6 +10,7 @@ var app = require('../app');
 var debug = require('debug')('little-hogsmeade-server:server');
 var http = require('http');
 var prisma = require('../src/lib/prisma');
+var socket = require('../src/realtime/socket');
 
 /**
  * Get port from environment and store in Express.
@@ -23,6 +24,7 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
+socket.initialize(server);
 
 /**
  * Listen on provided port, on all network interfaces.
