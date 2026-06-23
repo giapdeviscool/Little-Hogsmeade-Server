@@ -132,7 +132,8 @@ async function createOrder(branchId, employeeId, payload) {
       invoiceId: invoice.id,
       method: paymentMethod,
       amount: totals.totalAmount,
-      status: paymentStatus
+      status: paymentStatus,
+      paidAt: paymentStatus === 'completed' ? new Date() : null
     }, tx);
 
     var loyaltyResult = null;
