@@ -1,5 +1,10 @@
 var prisma = require('../lib/prisma');
 
+var ACTIVE_ORDER_STATUSES = [
+  'pending', 'confirmed', 'preparing', 'in_progress', 'serving', 'open',
+  'PENDING', 'CONFIRMED', 'PREPARING', 'IN_PROGRESS', 'SERVING', 'OPEN'
+];
+
 function findBranchById(id) {
   return prisma.branch.findUnique({
     where: { id: id },
@@ -77,6 +82,7 @@ function findTableWithBranchById(id) {
       id: true,
       name: true,
       guestCount: true,
+      currentOrderId: true,
       area: {
         select: { branchId: true }
       }
@@ -84,24 +90,45 @@ function findTableWithBranchById(id) {
   });
 }
 
-function findCurrentOrderByTableId(tableId) {
+function findCurrentOrderByTableId(tableId, currentOrderId) {
+  var orderLinks = [{ tableId: tableId }];
+
+  if (currentOrderId) {
+    orderLinks.unshift({ id: currentOrderId });
+  }
+
   return prisma.order.findFirst({
     where: {
-      tableId: tableId,
-      status: { in: ['PENDING', 'pending'] }
+      OR: orderLinks,
+      status: { in: ACTIVE_ORDER_STATUSES }
     },
     orderBy: { createdAt: 'desc' },
     include: {
       orderItems: {
         select: {
+          id: true,
+          menuItemId: true,
+          variantId: true,
           quantity: true,
           unitPrice: true,
           subtotal: true,
+          note: true,
+          status: true,
           menuItem: {
             select: { name: true }
           },
           variant: {
             select: { name: true }
+          },
+          orderItemToppings: {
+            select: {
+              toppingId: true,
+              quantity: true,
+              extraPrice: true,
+              topping: {
+                select: { name: true }
+              }
+            }
           }
         }
       }

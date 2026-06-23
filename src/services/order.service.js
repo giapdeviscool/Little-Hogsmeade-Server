@@ -70,17 +70,52 @@ async function createOrder(branchId, employeeId, payload) {
   }
 
   var customerId = payload.customerId || null;
-  var orderStatus = payload.status || 'paid';
+  var tableId = payload.tableId || null;
+  var orderStatus = payload.status || (tableId ? 'pending' : 'paid');
   var paymentMethod = payload.paymentMethod;
   var discountAmount = normalizeNumber(payload.discountAmount);
   var taxAmount = normalizeNumber(payload.taxAmount);
   var items = Array.isArray(payload.items) ? payload.items : [];
 
-  return prisma.$transaction(async function(tx) {
+  var result = await prisma.$transaction(async function(tx) {
+    var table = null;
+
+    if (tableId) {
+      table = await tx.table.findUnique({
+        where: { id: tableId },
+        include: { area: { select: { branchId: true } } }
+      });
+
+      if (!table) {
+        throwHttpError(404, 'Table not found');
+      }
+
+      if (table.area.branchId !== branchId) {
+        throwHttpError(400, 'Table does not belong to the order branch');
+      }
+
+      if (normalizeOrderType(payload.orderType || 'dine-in') !== 'dine-in') {
+        throwHttpError(400, 'Only dine-in orders can be assigned to a table');
+      }
+
+      if (OPEN_ORDER_STATUSES.indexOf(normalizeStatus(orderStatus)) === -1) {
+        throwHttpError(400, 'An order assigned to a table must start with an open status');
+      }
+
+      var tableStatus = normalizeStatus(table.status);
+      var isAvailableTable = tableStatus === 'available';
+      var isCheckedInTableWithoutOrder = tableStatus === 'occupied' && !table.currentOrderId;
+
+      if ((!isAvailableTable && !isCheckedInTableWithoutOrder) || table.currentOrderId || table.reservationId) {
+        throwHttpError(409, 'Table is not available');
+      }
+    }
+
     var order = await orderRepository.createOrder({
       branchId: branchId,
       employeeId: employeeId,
       customerId: customerId,
+      tableId: tableId,
       status: orderStatus,
       orderType: payload.orderType || 'dine-in',
       createdAt: new Date(),
@@ -174,11 +209,24 @@ async function createOrder(branchId, employeeId, payload) {
           note: 'Loyalty points earned for paid order'
         }, tx);
 
-        loyaltyResult = {
+      loyaltyResult = {
           pointsEarned: pointsEarned,
           membershipId: updatedMembership.id
         };
       }
+    }
+
+    var occupiedTable = null;
+
+    if (table) {
+      occupiedTable = await tx.table.update({
+        where: { id: table.id },
+        data: {
+          status: 'occupied',
+          currentOrderId: order.id,
+          reservationId: null
+        }
+      });
     }
 
     return {
@@ -186,9 +234,20 @@ async function createOrder(branchId, employeeId, payload) {
       items: createdItems,
       invoice: invoice,
       payment: payment,
-      loyalty: loyaltyResult
+      loyalty: loyaltyResult,
+      table: occupiedTable
     };
   });
+
+  if (result.table) {
+    socket.emitTableStatusUpdated({
+      tableId: result.table.id,
+      newStatus: result.table.status,
+      branchId: branchId
+    });
+  }
+
+  return result;
 }
 
 async function updateOrderStatus(id, status) {
@@ -242,6 +301,80 @@ async function updateOrderStatus(id, status) {
       invoice: invoice || null
     };
   });
+}
+
+async function addOrderItems(orderId, items, currentUser) {
+  assertValidId(orderId);
+
+  var result = await prisma.$transaction(async function(tx) {
+    var order = await orderRepository.findOrderById(orderId, tx);
+
+    if (!order) {
+      throwHttpError(404, 'Order not found');
+    }
+
+    assertEmployeeAccess(currentUser, order.branchId);
+
+    if (OPEN_ORDER_STATUSES.indexOf(normalizeStatus(order.status)) === -1) {
+      throwHttpError(409, 'Only open orders can add items');
+    }
+
+    var createdItems = [];
+    for (var i = 0; i < items.length; i += 1) {
+      var item = items[i];
+      var itemSubtotal = item.subtotal !== undefined
+        ? item.subtotal
+        : item.unitPrice * item.quantity;
+      var orderItem = await orderRepository.createOrderItem({
+        orderId: order.id,
+        menuItemId: item.menuItemId,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+        subtotal: itemSubtotal
+      }, tx);
+
+      createdItems.push(orderItem);
+
+      if (Array.isArray(item.toppings)) {
+        for (var j = 0; j < item.toppings.length; j += 1) {
+          var topping = item.toppings[j];
+          await orderRepository.createOrderItemTopping({
+            orderItemId: orderItem.id,
+            toppingId: topping.toppingId,
+            quantity: topping.quantity,
+            extraPrice: topping.extraPrice
+          }, tx);
+        }
+      }
+    }
+
+    var invoice = await orderRepository.findInvoiceByOrderId(order.id, tx);
+    var updatedInvoice = null;
+
+    if (invoice) {
+      var addedTotals = calculateOrderTotals(items, 0, 0);
+      var newSubtotal = invoice.subtotal + addedTotals.subtotal;
+      var newTotalAmount = Math.max(0, newSubtotal - invoice.discountAmount + invoice.taxAmount);
+
+      updatedInvoice = await orderRepository.updateInvoice(invoice.id, {
+        subtotal: newSubtotal,
+        totalAmount: newTotalAmount
+      }, tx);
+      await orderRepository.updatePaymentAmountByInvoiceId(invoice.id, newTotalAmount, tx);
+    }
+
+    return {
+      order: order,
+      items: createdItems,
+      invoice: updatedInvoice
+    };
+  });
+
+  return {
+    order_id: result.order.id,
+    added_items: result.items,
+    invoice: result.invoice
+  };
 }
 
 async function changeOrderTable(orderId, targetTableId, currentUser) {
@@ -429,6 +562,7 @@ function assertEmployeeAccess(currentUser, branchId) {
 
 module.exports = {
   createOrder: createOrder,
+  addOrderItems: addOrderItems,
   updateOrderStatus: updateOrderStatus,
   changeOrderTable: changeOrderTable,
   deleteOrder: deleteOrder

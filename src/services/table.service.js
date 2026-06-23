@@ -83,16 +83,31 @@ async function getCurrentOrder(tableId, currentUser) {
 
   assertEmployeeAccess(currentUser, table.area.branchId);
 
-  var order = await tableRepository.findCurrentOrderByTableId(tableId);
+  var order = await tableRepository.findCurrentOrderByTableId(tableId, table.currentOrderId);
   if (!order) {
-    throwHttpError(404, 'No pending order found for this table');
+    throwHttpError(404, 'No active order found for this table');
   }
 
   var items = order.orderItems.map(function(item) {
     return {
+      id: item.id,
+      menu_item_id: item.menuItemId,
+      variant_id: item.variantId,
       name: item.variant ? item.menuItem.name + ' - ' + item.variant.name : item.menuItem.name,
       quantity: item.quantity,
-      price: item.unitPrice
+      price: item.unitPrice,
+      unit_price: item.unitPrice,
+      subtotal: item.subtotal,
+      note: item.note,
+      status: item.status,
+      toppings: item.orderItemToppings.map(function(topping) {
+        return {
+          topping_id: topping.toppingId,
+          name: topping.topping.name,
+          quantity: topping.quantity,
+          extra_price: topping.extraPrice
+        };
+      })
     };
   });
 
