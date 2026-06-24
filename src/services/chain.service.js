@@ -36,7 +36,8 @@ async function getDashboard(query) {
   }
 
   var invoices = await chainRepository.findInvoices(invoiceWhere);
-  var totalOrders = await chainRepository.countOrders(orderWhere);
+  var totalOrders = invoices.length;
+  
   var expenseResult = await chainRepository.sumExpenses(expenseWhere);
   var totalRevenue = sumInvoices(invoices);
   var totalExpenses = expenseResult._sum.amount || 0;
@@ -271,6 +272,10 @@ function parseDateRange(startDateValue, endDateValue) {
 
   if (!startDateValue) {
     startDate.setDate(startDate.getDate() - 30);
+  }
+
+  if (endDateValue) {
+    endDate.setUTCHours(23, 59, 59, 999);
   }
 
   if (endDate < startDate) {
