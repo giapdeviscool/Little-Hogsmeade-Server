@@ -56,6 +56,40 @@ function calculateOrderTotals(items, discountAmount, taxAmount) {
   };
 }
 
+function calculateLoyaltyPoints(loyaltyConfig, totalAmount, discountAmount) {
+  if (!loyaltyConfig || !loyaltyConfig.isActive) {
+    return null;
+  }
+
+  var spendPerPoint = loyaltyConfig.spendPerPoint;
+
+  if (!spendPerPoint || spendPerPoint <= 0) {
+    if (loyaltyConfig.spendAmount > 0 && loyaltyConfig.earnPoint > 0) {
+      spendPerPoint = loyaltyConfig.spendAmount / loyaltyConfig.earnPoint;
+    } else {
+      return null;
+    }
+  }
+
+  var hasDiscount = normalizeNumber(discountAmount) > 0;
+
+  if (hasDiscount && !loyaltyConfig.allowVoucherEarning) {
+    return null;
+  }
+
+  var pointsEarned = totalAmount / spendPerPoint;
+
+  if (!loyaltyConfig.allowFractionalPoints) {
+    pointsEarned = Math.floor(pointsEarned);
+  }
+
+  if (pointsEarned <= 0) {
+    return null;
+  }
+
+  return pointsEarned;
+}
+
 async function createOrder(branchId, employeeId, payload) {
   if (!branchId || typeof branchId !== 'string') {
     throwHttpError(403, 'BranchId must be provided by authentication token');
@@ -165,6 +199,51 @@ async function createOrder(branchId, employeeId, payload) {
       pointsEarned: 0,
       status: 'unpaid'
     }, tx);
+
+    var loyaltyResult = null;
+
+    if (orderStatus === 'paid' && customerId) {
+      var loyaltyConfig = await orderRepository.findLoyaltyConfigByBranch(branchId, tx);
+      var pointsEarned = calculateLoyaltyPoints(
+        loyaltyConfig,
+        totals.totalAmount,
+        totals.discountAmount
+      );
+
+      if (pointsEarned !== null) {
+        invoice = await orderRepository.updateInvoice(invoice.id, {
+          pointsEarned: pointsEarned
+        }, tx);
+
+        var membership = await orderRepository.findCustomerMembershipByCustomerId(customerId, tx);
+
+        if (!membership) {
+          membership = await orderRepository.createCustomerMembership({
+            customerId: customerId,
+            totalPoints: 0,
+            totalSpent: 0
+          }, tx);
+        }
+
+        var updatedMembership = await orderRepository.updateCustomerMembership(membership.id, {
+          totalPoints: membership.totalPoints + pointsEarned,
+          totalSpent: membership.totalSpent + totals.totalAmount
+        }, tx);
+
+        await orderRepository.createPointTransaction({
+          customerMembershipId: updatedMembership.id,
+          orderId: order.id,
+          type: 'earn',
+          points: pointsEarned,
+          note: 'Loyalty points earned for paid order'
+        }, tx);
+
+        loyaltyResult = {
+          pointsEarned: pointsEarned,
+          membershipId: updatedMembership.id
+        };
+      }
+    }
 
     var occupiedTable = null;
 

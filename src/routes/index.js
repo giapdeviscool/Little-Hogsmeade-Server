@@ -23,6 +23,7 @@ var recipeRoutes = require("./recipe.routes");
 var ingredientRoutes = require("./ingredient.routes");
 var tableRoutes = require("./table.routes");
 var reservationRoutes = require("./reservation.routes");
+var adminRoutes = require("./admin.routes");
 var cashierShiftRoutes = require("./cashier-shift.routes");
 var paymentRoutes = require("./payment.routes");
 var resourcesConfig = require("../config/resources");
@@ -54,6 +55,7 @@ router.use("/tables", tableRoutes);
 router.use("/reservations", reservationRoutes);
 router.use("/cashier-shifts", cashierShiftRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/admin", adminRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({
