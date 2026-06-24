@@ -495,6 +495,8 @@ model Payment {
   qrCodeUrl      String?   @map("qr_code_url")
   paidAt         DateTime? @map("paid_at")
   status         String    @default("pending")
+  cashReceived   Float?    @map("cash_received")
+  cashChangeDue  Float?    @map("cash_change_due")
 
   invoice Invoice @relation("Payment_invoiceId_to_Invoice", fields: [invoiceId], references: [id])
 

@@ -76,15 +76,11 @@ async function requestClosure(shiftId, branchId) {
 
   var expectedCash = shift.startingFloat + aggregation.cashSales - aggregation.cashRefunds;
 
-  // SMS trigger logic (Mock)
-  var otp = Math.floor(100000 + Math.random() * 900000).toString();
-  console.log(`[SMS MOCK] Sending OTP ${otp} to Chain Admin for Shift Closure.`);
-
   return {
     expected_cash_system: expectedCash,
     cash_sales: aggregation.cashSales,
     cash_refunds: aggregation.cashRefunds,
-    message: 'OTP sent to manager. Waiting for override.'
+    message: 'Please request the TOTP code from the manager.'
   };
 }
 
@@ -100,8 +96,16 @@ async function closeShift(shiftId, branchId, payload, currentUser) {
     throwHttpError(400, 'Shift is not open');
   }
 
-  if (payload.otp !== '123456') { // Mock Cryptographic Validation
-    throwHttpError(401, 'Invalid Manager OTP');
+  const { authenticator } = require('otplib');
+  const code = payload.code || payload.otp;
+
+  if (!code || typeof code !== 'string') {
+    throwHttpError(400, 'TOTP code is required');
+  }
+
+  const isValid = authenticator.check(code, process.env.ADMIN_TOTP_SECRET);
+  if (!isValid) {
+    throwHttpError(401, 'Invalid or expired Admin OTP token.');
   }
 
   var actualCashCounted = parseFloat(payload.actual_cash_counted);

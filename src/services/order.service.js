@@ -71,8 +71,7 @@ async function createOrder(branchId, employeeId, payload) {
 
   var customerId = payload.customerId || null;
   var tableId = payload.tableId || null;
-  var orderStatus = payload.status || (tableId ? 'pending' : 'paid');
-  var paymentMethod = payload.paymentMethod;
+  var orderStatus = 'pending';
   var discountAmount = normalizeNumber(payload.discountAmount);
   var taxAmount = normalizeNumber(payload.taxAmount);
   var items = Array.isArray(payload.items) ? payload.items : [];
@@ -164,60 +163,8 @@ async function createOrder(branchId, employeeId, payload) {
       taxAmount: totals.taxAmount,
       totalAmount: totals.totalAmount,
       pointsEarned: 0,
-      status: orderStatus
+      status: 'unpaid'
     }, tx);
-
-    var paymentStatus = orderStatus === 'paid' ? 'completed' : 'pending';
-
-    var payment = await orderRepository.createPayment({
-      invoiceId: invoice.id,
-      method: paymentMethod,
-      amount: totals.totalAmount,
-      status: paymentStatus,
-      paidAt: paymentStatus === 'completed' ? new Date() : null
-    }, tx);
-
-    var loyaltyResult = null;
-
-    if (orderStatus === 'paid' && customerId) {
-      var loyaltyConfig = await orderRepository.findLoyaltyConfigByBranch(branchId, tx);
-
-      if (loyaltyConfig && loyaltyConfig.spendPerPoint > 0) {
-        var pointsEarned = totals.totalAmount / loyaltyConfig.spendPerPoint;
-
-        invoice = await orderRepository.updateInvoice(invoice.id, {
-          pointsEarned: pointsEarned
-        }, tx);
-
-        var membership = await orderRepository.findCustomerMembershipByCustomerId(customerId, tx);
-
-        if (!membership) {
-          membership = await orderRepository.createCustomerMembership({
-            customerId: customerId,
-            totalPoints: 0,
-            totalSpent: 0
-          }, tx);
-        }
-
-        var updatedMembership = await orderRepository.updateCustomerMembership(membership.id, {
-          totalPoints: membership.totalPoints + pointsEarned,
-          totalSpent: membership.totalSpent + totals.totalAmount
-        }, tx);
-
-        await orderRepository.createPointTransaction({
-          customerMembershipId: updatedMembership.id,
-          orderId: order.id,
-          type: 'earn',
-          points: pointsEarned,
-          note: 'Loyalty points earned for paid order'
-        }, tx);
-
-      loyaltyResult = {
-          pointsEarned: pointsEarned,
-          membershipId: updatedMembership.id
-        };
-      }
-    }
 
     var occupiedTable = null;
 
@@ -233,11 +180,10 @@ async function createOrder(branchId, employeeId, payload) {
     }
 
     return {
-      order: order,
-      items: createdItems,
-      invoice: invoice,
-      payment: payment,
-      loyalty: loyaltyResult,
+      success: true,
+      order_id: order.id,
+      invoice_id: invoice.id,
+      total_amount: totals.totalAmount,
       table: occupiedTable
     };
   });
@@ -249,6 +195,13 @@ async function createOrder(branchId, employeeId, payload) {
       branchId: branchId
     });
   }
+
+  return {
+    success: true,
+    order_id: result.order_id,
+    invoice_id: result.invoice_id,
+    total_amount: result.total_amount
+  };
 
   return result;
 }

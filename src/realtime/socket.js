@@ -7,6 +7,8 @@ function initialize(server) {
     cors: { origin: '*' }
   });
 
+  global.io = io;
+
   return io;
 }
 
