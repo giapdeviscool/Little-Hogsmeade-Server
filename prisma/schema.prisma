@@ -30,6 +30,7 @@ model Branch {
   areas             Area[]             @relation("Area_branchId_to_Branch")
   membershipTiers   MembershipTier[]   @relation("MembershipTier_branchId_to_Branch")
   loyaltyConfigs    LoyaltyConfig[]    @relation("LoyaltyConfig_branchId_to_Branch")
+  loyaltyRewards    LoyaltyReward[]    @relation("LoyaltyReward_branchId_to_Branch")
   orders            Order[]            @relation("Order_branchId_to_Branch")
   stockTransactions StockTransaction[] @relation("StockTransaction_branchId_to_Branch")
   purchaseOrders    PurchaseOrder[]    @relation("PurchaseOrder_branchId_to_Branch")
@@ -191,6 +192,7 @@ model MenuItem {
   menuItemToppingGroups MenuItemToppingGroup[] @relation("MenuItemToppingGroup_menuItemId_to_MenuItem")
   recipes               Recipe[]               @relation("Recipe_menuItemId_to_MenuItem")
   orderItems            OrderItem[]            @relation("OrderItem_menuItemId_to_MenuItem")
+  loyaltyRewards        LoyaltyReward[]        @relation("LoyaltyReward_productId_to_MenuItem")
 
   @@map("menu_items")
 }
@@ -373,15 +375,42 @@ model CustomerMembership {
 }
 
 model LoyaltyConfig {
-  id            String  @id @default(auto()) @map("_id") @db.ObjectId
-  branchId      String  @map("branch_id") @db.ObjectId
-  spendPerPoint Float   @map("spend_per_point")
-  pointToVnd    Float   @map("point_to_vnd")
-  isActive      Boolean @default(true) @map("is_active")
+  id                    String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId              String  @map("branch_id") @db.ObjectId
+  spendAmount           Float   @default(10000) @map("spend_amount")
+  earnPoint             Int     @default(1) @map("earn_point")
+  spendPerPoint         Float   @map("spend_per_point")
+  pointToVnd            Float   @map("point_to_vnd")
+  pointsExpiryDays      Int?    @map("points_expiry_days")
+  allowVoucherEarning   Boolean @default(false) @map("allow_voucher_earning")
+  allowFractionalPoints Boolean @default(false) @map("allow_fractional_points")
+  isActive              Boolean @default(true) @map("is_active")
 
   branch Branch @relation("LoyaltyConfig_branchId_to_Branch", fields: [branchId], references: [id])
 
   @@map("loyalty_configs")
+}
+
+model LoyaltyReward {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId       String   @map("branch_id") @db.ObjectId
+  name           String
+  requiredPoints Int      @map("required_points")
+  rewardType     String   @map("reward_type")
+  discountValue  Float    @default(0) @map("discount_value")
+  minOrderValue  Float    @default(0) @map("min_order_value")
+  productId      String?  @map("product_id") @db.ObjectId
+  description    String?
+  imageUrl       String?  @map("image_url")
+  status         String   @default("active")
+  isDeleted      Boolean  @default(false) @map("is_deleted")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @map("updated_at")
+
+  branch  Branch    @relation("LoyaltyReward_branchId_to_Branch", fields: [branchId], references: [id])
+  product MenuItem? @relation("LoyaltyReward_productId_to_MenuItem", fields: [productId], references: [id])
+
+  @@map("loyalty_rewards")
 }
 
 model PointTransaction {
