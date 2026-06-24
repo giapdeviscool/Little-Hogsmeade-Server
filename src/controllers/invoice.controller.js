@@ -33,7 +33,22 @@ async function getInvoiceById(req, res, next) {
   }
 }
 
+async function getAdminInvoices(req, res, next) {
+  try {
+    var result = await invoiceService.getAdminInvoices(req.query, req.user);
+    
+    res.status(200).json({
+      success: true,
+      pagination: result.pagination,
+      data: result.data
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getInvoices: getInvoices,
-  getInvoiceById: getInvoiceById
+  getInvoiceById: getInvoiceById,
+  getAdminInvoices: getAdminInvoices
 };

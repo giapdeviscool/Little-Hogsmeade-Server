@@ -139,7 +139,78 @@ function findInvoiceById(id) {
   });
 }
 
+async function findAdminInvoices(filters, skip, limit) {
+  var where = {};
+
+  if (filters.branchId) {
+    where.order = where.order || {};
+    where.order.branchId = filters.branchId;
+  }
+
+  if (filters.status) {
+    where.status = filters.status;
+  }
+
+  if (filters.paymentMethod) {
+    where.payments = {
+      some: {
+        method: filters.paymentMethod
+      }
+    };
+  }
+
+  if (filters.cashierId) {
+    where.order = where.order || {};
+    where.order.employeeId = filters.cashierId;
+  }
+
+  if (filters.startDate || filters.endDate) {
+    where.createdAt = {};
+    if (filters.startDate) {
+      where.createdAt.gte = filters.startDate;
+    }
+    if (filters.endDate) {
+      where.createdAt.lte = filters.endDate;
+    }
+  }
+
+  var dataPromise = prisma.invoice.findMany({
+    where: where,
+    skip: skip,
+    take: limit,
+    orderBy: {
+      createdAt: 'desc'
+    },
+    include: {
+      payments: true,
+      order: {
+        include: {
+          employee: true,
+          customer: true,
+          orderItems: {
+            include: {
+              menuItem: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  var countPromise = prisma.invoice.count({
+    where: where
+  });
+
+  var results = await Promise.all([dataPromise, countPromise]);
+
+  return {
+    data: results[0],
+    totalCount: results[1]
+  };
+}
+
 module.exports = {
   findInvoices: findInvoices,
-  findInvoiceById: findInvoiceById
+  findInvoiceById: findInvoiceById,
+  findAdminInvoices: findAdminInvoices
 };
