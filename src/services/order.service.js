@@ -76,6 +76,7 @@ async function createOrder(branchId, employeeId, payload) {
   var discountAmount = normalizeNumber(payload.discountAmount);
   var taxAmount = normalizeNumber(payload.taxAmount);
   var items = Array.isArray(payload.items) ? payload.items : [];
+  var cashierShiftId = payload.cashierShiftId || null;
 
   var result = await prisma.$transaction(async function(tx) {
     var table = null;
@@ -118,6 +119,7 @@ async function createOrder(branchId, employeeId, payload) {
       tableId: tableId,
       status: orderStatus,
       orderType: payload.orderType || 'dine-in',
+      cashierShiftId: cashierShiftId,
       createdAt: new Date(),
     }, tx);
 

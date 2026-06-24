@@ -23,6 +23,7 @@ var recipeRoutes = require("./recipe.routes");
 var ingredientRoutes = require("./ingredient.routes");
 var tableRoutes = require("./table.routes");
 var reservationRoutes = require("./reservation.routes");
+var cashierShiftRoutes = require("./cashier-shift.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 var router = express.Router();
@@ -50,6 +51,7 @@ router.use("/recipes", recipeRoutes);
 router.use("/ingredients", ingredientRoutes);
 router.use("/tables", tableRoutes);
 router.use("/reservations", reservationRoutes);
+router.use("/cashier-shifts", cashierShiftRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({

@@ -47,6 +47,17 @@ function createOrder(data, tx) {
     delete createData.table;
   }
 
+  // Handle optional cashierShiftId as a relation
+  if (createData.cashierShiftId && !createData.cashierShift) {
+    createData.cashierShift = { connect: { id: createData.cashierShiftId } };
+    delete createData.cashierShiftId;
+  }
+
+  if (createData.cashierShiftId === null) {
+    delete createData.cashierShiftId;
+    delete createData.cashierShift;
+  }
+
   // DEBUG: show what is being sent to Prisma (remove in production)
   try {
     console.log('[order.repository] createData:', JSON.stringify(createData));
@@ -215,6 +226,52 @@ function deleteOrderById(id, tx) {
   });
 }
 
+async function calculateCashRevenueForShift(shiftId, tx) {
+  var db = getDb(tx);
+  var invoices = await db.invoice.findMany({
+    where: {
+      order: {
+        cashierShiftId: shiftId
+      }
+    },
+    include: {
+      payments: true,
+      order: true
+    }
+  });
+
+  var cashSales = 0;
+  var cashRefunds = 0;
+  var pendingOrders = 0;
+  var openStatuses = ['pending', 'confirmed', 'preparing', 'in_progress', 'serving', 'open'];
+
+  for (var i = 0; i < invoices.length; i++) {
+    var invoice = invoices[i];
+    var orderStatus = String(invoice.order.status || '').trim().toLowerCase();
+
+    if (openStatuses.includes(orderStatus)) {
+      pendingOrders += 1;
+    }
+
+    for (var j = 0; j < invoice.payments.length; j++) {
+      var payment = invoice.payments[j];
+      if (payment.method === 'cash') {
+        if (payment.status === 'completed') {
+          cashSales += payment.amount;
+        } else if (payment.status === 'refunded') {
+          cashRefunds += payment.amount;
+        }
+      }
+    }
+  }
+
+  return {
+    cashSales: cashSales,
+    cashRefunds: cashRefunds,
+    pendingOrders: pendingOrders
+  };
+}
+
 module.exports = {
   createOrder: createOrder,
   createOrderItem: createOrderItem,
@@ -239,5 +296,6 @@ module.exports = {
   deletePointTransactionsByOrderId: deletePointTransactionsByOrderId,
   deletePaymentsByInvoiceId: deletePaymentsByInvoiceId,
   deleteInvoiceByOrderId: deleteInvoiceByOrderId,
-  deleteOrderById: deleteOrderById
+  deleteOrderById: deleteOrderById,
+  calculateCashRevenueForShift: calculateCashRevenueForShift
 };

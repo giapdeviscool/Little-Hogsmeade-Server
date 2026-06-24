@@ -412,13 +412,15 @@ model Order {
   orderType  String   @map("order_type")
   status     String
   note       String?
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @map("updated_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @map("updated_at")
+  cashierShiftId String?  @map("cashier_shift_id") @db.ObjectId
 
   branch   Branch    @relation("Order_branchId_to_Branch", fields: [branchId], references: [id])
   table    Table?    @relation("Order_tableId_to_Table", fields: [tableId], references: [id])
-  customer Customer? @relation("Order_customerId_to_Customer", fields: [customerId], references: [id])
-  employee Employee  @relation("Order_employeeId_to_Employee", fields: [employeeId], references: [id])
+  customer     Customer?     @relation("Order_customerId_to_Customer", fields: [customerId], references: [id])
+  employee     Employee      @relation("Order_employeeId_to_Employee", fields: [employeeId], references: [id])
+  cashierShift CashierShift? @relation("CashierShift_orders_to_Order", fields: [cashierShiftId], references: [id])
 
   pointTransactions PointTransaction[] @relation("PointTransaction_orderId_to_Order")
   orderItems        OrderItem[]        @relation("OrderItem_orderId_to_Order")
@@ -772,6 +774,7 @@ model CashierShift {
   employee        Employee  @relation("CashierShift_employeeId_to_Employee", fields: [employeeId], references: [id])
   roster          Roster?   @relation("CashierShift_rosterId_to_Roster", fields: [rosterId], references: [id])
   authorizedAdmin Employee? @relation("CashierShift_authorizedAdminId_to_Employee", fields: [authorizedAdminId], references: [id])
+  orders          Order[]   @relation("CashierShift_orders_to_Order")
 
   @@map("cashier_shifts")
 }
