@@ -8,18 +8,18 @@ datasource db {
 }
 
 model Branch {
-  id                         String   @id @default(auto()) @map("_id") @db.ObjectId
-  name                       String
-  address                    String
-  phone                      String
-  email                      String?
-  lat                        Float
-  lng                        Float
-  openTime                   DateTime @map("open_time")
-  closeTime                  DateTime @map("close_time")
-  status                     String   @default("active")
-  allowLocalPricingOverride  Boolean  @default(false) @map("allow_local_pricing_override")
-  createdAt                  DateTime @default(now()) @map("created_at")
+  id                        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                      String
+  address                   String
+  phone                     String
+  email                     String?
+  lat                       Float
+  lng                       Float
+  openTime                  DateTime @map("open_time")
+  closeTime                 DateTime @map("close_time")
+  status                    String   @default("active")
+  allowLocalPricingOverride Boolean  @default(false) @map("allow_local_pricing_override")
+  createdAt                 DateTime @default(now()) @map("created_at")
 
   branchConfigs     BranchConfig[]     @relation("BranchConfig_branchId_to_Branch")
   employees         Employee[]         @relation("Employee_branchId_to_Branch")
@@ -42,6 +42,7 @@ model Branch {
   reservations      Reservation[]      @relation("Reservation_branchId_to_Branch")
   rosters           Roster[]           @relation("Roster_branchId_to_Branch")
   toppingGroups     ToppingGroup[]     @relation("ToppingGroup_branchId_to_Branch")
+  cashierShifts     CashierShift[]     @relation("CashierShift_branchId_to_Branch")
 
   @@map("branches")
 }
@@ -95,14 +96,16 @@ model Employee {
   branch Branch @relation("Employee_branchId_to_Branch", fields: [branchId], references: [id])
   role   Role   @relation("Employee_roleId_to_Role", fields: [roleId], references: [id])
 
-  timesheetsEmployeeId Timesheet[]        @relation("Timesheet_employeeId_to_Employee")
-  timesheetsApprovedBy Timesheet[]        @relation("Timesheet_approvedBy_to_Employee")
-  orders               Order[]            @relation("Order_employeeId_to_Employee")
-  deliveryOrders       DeliveryOrder[]    @relation("DeliveryOrder_deliveryEmployeeId_to_Employee")
-  stockTransactions    StockTransaction[] @relation("StockTransaction_employeeId_to_Employee")
-  expenses             Expense[]          @relation("Expense_employeeId_to_Employee")
-  posts                Post[]             @relation("Post_authorId_to_Employee")
-  rosters              Roster[]           @relation("Roster_employeeId_to_Employee")
+  timesheetsEmployeeId    Timesheet[]        @relation("Timesheet_employeeId_to_Employee")
+  timesheetsApprovedBy    Timesheet[]        @relation("Timesheet_approvedBy_to_Employee")
+  orders                  Order[]            @relation("Order_employeeId_to_Employee")
+  deliveryOrders          DeliveryOrder[]    @relation("DeliveryOrder_deliveryEmployeeId_to_Employee")
+  stockTransactions       StockTransaction[] @relation("StockTransaction_employeeId_to_Employee")
+  expenses                Expense[]          @relation("Expense_employeeId_to_Employee")
+  posts                   Post[]             @relation("Post_authorId_to_Employee")
+  rosters                 Roster[]           @relation("Roster_employeeId_to_Employee")
+  cashierShifts           CashierShift[]     @relation("CashierShift_employeeId_to_Employee")
+  authorizedCashierShifts CashierShift[]     @relation("CashierShift_authorizedAdminId_to_Employee")
 
   @@map("employees")
 }
@@ -149,9 +152,10 @@ model Roster {
   status     String   @default("scheduled")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  branch   Branch   @relation("Roster_branchId_to_Branch", fields: [branchId], references: [id])
-  employee Employee @relation("Roster_employeeId_to_Employee", fields: [employeeId], references: [id])
-  shift    Shift    @relation("Roster_shiftId_to_Shift", fields: [shiftId], references: [id])
+  branch        Branch         @relation("Roster_branchId_to_Branch", fields: [branchId], references: [id])
+  employee      Employee       @relation("Roster_employeeId_to_Employee", fields: [employeeId], references: [id])
+  shift         Shift          @relation("Roster_shiftId_to_Shift", fields: [shiftId], references: [id])
+  cashierShifts CashierShift[] @relation("CashierShift_rosterId_to_Roster")
 
   @@unique([employeeId, shiftId, date])
   @@map("rosters")
@@ -218,7 +222,7 @@ model ToppingGroup {
   maxSelect  Int     @default(1) @map("max_select")
   isActive   Boolean @default(true) @map("is_active")
 
-  branch Branch? @relation("ToppingGroup_branchId_to_Branch", fields: [branchId], references: [id])
+  branch                Branch?                @relation("ToppingGroup_branchId_to_Branch", fields: [branchId], references: [id])
   toppings              Topping[]              @relation("Topping_toppingGroupId_to_ToppingGroup")
   menuItemToppingGroups MenuItemToppingGroup[] @relation("MenuItemToppingGroup_toppingGroupId_to_ToppingGroup")
 
@@ -226,10 +230,10 @@ model ToppingGroup {
 }
 
 model Topping {
-  id             String @id @default(auto()) @map("_id") @db.ObjectId
-  toppingGroupId String @map("topping_group_id") @db.ObjectId
+  id             String  @id @default(auto()) @map("_id") @db.ObjectId
+  toppingGroupId String  @map("topping_group_id") @db.ObjectId
   name           String
-  extraPrice     Float  @default(0.00) @map("extra_price")
+  extraPrice     Float   @default(0.00) @map("extra_price")
   isActive       Boolean @default(true) @map("is_active")
 
   toppingGroup ToppingGroup @relation("Topping_toppingGroupId_to_ToppingGroup", fields: [toppingGroupId], references: [id])
@@ -252,17 +256,17 @@ model MenuItemToppingGroup {
 }
 
 model Ingredient {
-  id            String  @id @default(auto()) @map("_id") @db.ObjectId
-  branchId      String  @map("branch_id") @db.ObjectId
-  name          String
-  sku           String?
-  unit          String
-  importUnit    String? @map("import_unit")
-  conversionRate Float? @default(1.0) @map("conversion_rate")
-  category      String?
-  minStockLevel Float   @default(0.00) @map("min_stock_level")
-  currentStock  Float   @default(0.00) @map("current_stock")
-  isActive      Boolean @default(true) @map("is_active")
+  id             String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId       String  @map("branch_id") @db.ObjectId
+  name           String
+  sku            String?
+  unit           String
+  importUnit     String? @map("import_unit")
+  conversionRate Float?  @default(1.0) @map("conversion_rate")
+  category       String?
+  minStockLevel  Float   @default(0.00) @map("min_stock_level")
+  currentStock   Float   @default(0.00) @map("current_stock")
+  isActive       Boolean @default(true) @map("is_active")
 
   branch Branch @relation("Ingredient_branchId_to_Branch", fields: [branchId], references: [id])
 
@@ -301,17 +305,17 @@ model Area {
 }
 
 model Table {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  areaId           String   @map("area_id") @db.ObjectId
-  name             String
-  capacity         Int      @default(2)
-  status           String   @default("available")
-  currentOrderId   String?  @map("current_order_id") @db.ObjectId
-  reservationId    String?  @map("reservation_id") @db.ObjectId
-  guestCount       Int?     @map("guest_count")
-  note             String?
-  qrCodeUrl        String?  @map("qr_code_url")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  areaId         String   @map("area_id") @db.ObjectId
+  name           String
+  capacity       Int      @default(2)
+  status         String   @default("available")
+  currentOrderId String?  @map("current_order_id") @db.ObjectId
+  reservationId  String?  @map("reservation_id") @db.ObjectId
+  guestCount     Int?     @map("guest_count")
+  note           String?
+  qrCodeUrl      String?  @map("qr_code_url")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   area Area @relation("Table_areaId_to_Area", fields: [areaId], references: [id])
 
@@ -650,10 +654,10 @@ model VoucherUsage {
 }
 
 model Page {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  branchId    String?  @map("branch_id") @db.ObjectId
-  slug        String   @unique
-  title       String
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId          String?  @map("branch_id") @db.ObjectId
+  slug              String   @unique
+  title             String
   content           String
   imageUrl          String?  @map("image_url")
   aboutTitle        String?  @map("about_title")
@@ -748,4 +752,26 @@ model User {
   passwordHash String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model CashierShift {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  branchId           String    @map("branch_id") @db.ObjectId
+  employeeId         String    @map("employee_id") @db.ObjectId
+  rosterId           String?   @map("roster_id") @db.ObjectId
+  status             String    @default("OPEN")
+  startingFloat      Float     @map("starting_float")
+  actualCashCounted  Float?    @map("actual_cash_counted")
+  expectedCashSystem Float?    @map("expected_cash_system")
+  discrepancyAmount  Float?    @map("discrepancy_amount")
+  authorizedAdminId  String?   @map("authorized_admin_id") @db.ObjectId
+  openedAt           DateTime  @default(now()) @map("opened_at")
+  closedAt           DateTime? @map("closed_at")
+
+  branch          Branch    @relation("CashierShift_branchId_to_Branch", fields: [branchId], references: [id])
+  employee        Employee  @relation("CashierShift_employeeId_to_Employee", fields: [employeeId], references: [id])
+  roster          Roster?   @relation("CashierShift_rosterId_to_Roster", fields: [rosterId], references: [id])
+  authorizedAdmin Employee? @relation("CashierShift_authorizedAdminId_to_Employee", fields: [authorizedAdminId], references: [id])
+
+  @@map("cashier_shifts")
 }

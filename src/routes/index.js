@@ -64,16 +64,17 @@ router.get("/resources", function (req, res) {
 });
 
 resourcesConfig.getResources().forEach(function (resource) {
-  if (
-    resource.name === "pages" ||
-    resource.name === "banners" ||
-    resource.name === "posts" ||
-    resource.name === "events" ||
-    resource.name === "menu_items" ||
-    resource.name === "categories" ||
-    resource.name === "topping_groups" ||
-    resource.name === "ingredients"
-  ) {
+  var excludedResources = [
+    "pages",
+    "banners",
+    "posts",
+    "events",
+    "menu_items",
+    "categories",
+    "topping_groups",
+    "ingredients",
+  ];
+  if (excludedResources.includes(resource.name)) {
     return;
   }
 
