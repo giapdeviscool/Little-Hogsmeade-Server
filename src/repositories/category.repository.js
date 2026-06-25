@@ -63,11 +63,41 @@ async function updateCategory(id, data) {
   });
 }
 
+async function swapDisplayOrder(categoryId, direction) {
+  var category = await prisma.category.findUnique({ where: { id: categoryId } });
+  if (!category) return null;
+
+  var filter = { branchId: category.branchId };
+  var neighbor;
+
+  if (direction === 'up') {
+    neighbor = await prisma.category.findFirst({
+      where: { ...filter, displayOrder: { lt: category.displayOrder } },
+      orderBy: { displayOrder: 'desc' }
+    });
+  } else {
+    neighbor = await prisma.category.findFirst({
+      where: { ...filter, displayOrder: { gt: category.displayOrder } },
+      orderBy: { displayOrder: 'asc' }
+    });
+  }
+
+  if (!neighbor) return category;
+
+  await prisma.$transaction([
+    prisma.category.update({ where: { id: category.id }, data: { displayOrder: neighbor.displayOrder } }),
+    prisma.category.update({ where: { id: neighbor.id }, data: { displayOrder: category.displayOrder } })
+  ]);
+
+  return category;
+}
+
 module.exports = {
   findCategories: findCategories,
   countCategories: countCategories,
   findCategoryByName: findCategoryByName,
   findCategoryById: findCategoryById,
   createCategory: createCategory,
-  updateCategory: updateCategory
+  updateCategory: updateCategory,
+  swapDisplayOrder: swapDisplayOrder
 };

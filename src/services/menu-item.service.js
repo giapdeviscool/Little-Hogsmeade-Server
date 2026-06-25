@@ -211,9 +211,38 @@ async function updateMenuItem(id, data, user, fileUrl) {
   return await menuItemRepository.updateMenuItem(id, itemData);
 }
 
+async function moveItemsToCategory(menuItemIds, categoryId, user) {
+  var roleName = (user.roleName || '').trim().toLowerCase();
+  var isOwner = roleName.includes('owner');
+
+  if (!isOwner) {
+    var errRole = new Error('Chỉ Owner mới có quyền chuyển món giữa các danh mục');
+    errRole.status = 403;
+    throw errRole;
+  }
+
+  if (!Array.isArray(menuItemIds) || menuItemIds.length === 0 || !categoryId) {
+    var errParams = new Error('Thiếu tham số menuItemIds hoặc categoryId');
+    errParams.status = 400;
+    throw errParams;
+  }
+
+  // Check if category exists
+  var categoryRepository = require('../repositories/category.repository');
+  var category = await categoryRepository.findCategoryById(categoryId);
+  if (!category) {
+    var errNotFound = new Error('Danh mục không tồn tại');
+    errNotFound.status = 404;
+    throw errNotFound;
+  }
+
+  return await menuItemRepository.moveItemsToCategory(menuItemIds, categoryId);
+}
+
 module.exports = {
   getMenuItems: getMenuItems,
   createMenuItem: createMenuItem,
   updateMenuItemStatus: updateMenuItemStatus,
-  updateMenuItem: updateMenuItem
+  updateMenuItem: updateMenuItem,
+  moveItemsToCategory: moveItemsToCategory
 };

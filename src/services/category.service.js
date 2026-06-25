@@ -74,10 +74,20 @@ async function createCategory(payload, user) {
     throw { status: 400, message: 'A category with this name already exists. Please choose a different name.' };
   }
 
+  // Append to the end by getting current max displayOrder
+  var maxOrderCategory = await categoryRepository.findCategories({ branchId: branchId }, 0, 1);
+  var nextDisplayOrder = 0;
+  if (maxOrderCategory && maxOrderCategory.length > 0) {
+    // We need the absolute max, the repo query might just be sorting.
+    // Let's just do a count or rely on the total count.
+    var totalCategories = await categoryRepository.countCategories({ branchId: branchId });
+    nextDisplayOrder = totalCategories;
+  }
+
   return categoryRepository.createCategory({
     name: payload.name,
     icon: payload.icon || null,
-    displayOrder: parseInt(payload.displayOrder, 10) || 0,
+    displayOrder: nextDisplayOrder,
     isActive: payload.isActive !== undefined ? payload.isActive : true,
     branchId: branchId
   });
@@ -107,10 +117,29 @@ async function updateCategory(id, payload, user) {
   var updateData = {};
   if (payload.name !== undefined) updateData.name = payload.name;
   if (payload.icon !== undefined) updateData.icon = payload.icon;
-  if (payload.displayOrder !== undefined) updateData.displayOrder = parseInt(payload.displayOrder, 10);
+  // Ignore displayOrder updates from general update
   if (payload.isActive !== undefined) updateData.isActive = payload.isActive;
 
   return categoryRepository.updateCategory(id, updateData);
+}
+
+async function swapDisplayOrder(id, direction, user) {
+  var roleName = (user.roleName || user.role?.name || '').trim().toLowerCase();
+  var isOwner = roleName.includes('owner');
+
+  if (!isOwner) {
+    var errRole = new Error('Chỉ Owner mới có quyền thay đổi thứ tự danh mục');
+    errRole.status = 403;
+    throw errRole;
+  }
+
+  if (direction !== 'up' && direction !== 'down') {
+    var errParams = new Error('Tham số direction phải là up hoặc down');
+    errParams.status = 400;
+    throw errParams;
+  }
+
+  return await categoryRepository.swapDisplayOrder(id, direction);
 }
 
 async function deleteCategory(id, user) {
@@ -122,5 +151,6 @@ module.exports = {
   getCategories: getCategories,
   createCategory: createCategory,
   updateCategory: updateCategory,
-  deleteCategory: deleteCategory
+  deleteCategory: deleteCategory,
+  swapDisplayOrder: swapDisplayOrder
 };
