@@ -11,7 +11,7 @@ function findCustomerByEmail(email) {
     return Promise.resolve(null);
   }
 
-  return prisma.customer.findUnique({
+  return prisma.customer.findFirst({
     where: { email: email }
   });
 }
