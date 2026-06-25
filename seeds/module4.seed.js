@@ -21,13 +21,15 @@ function main() {
         await syncBranchesMenu(tx, branches.active, standardCategories, standardMenuItems);
         await seedBranchSafetyData(tx, branches, employees);
         await seedPromotions(tx, branches);
+        var customerData = await seedCustomersAndOrders(tx, branches, employees);
 
         return {
           chainConfig: chainConfig,
           branches: branches,
           employees: employees,
           categories: standardCategories.length,
-          menuItems: standardMenuItems.length
+          menuItems: standardMenuItems.length,
+          customer: customerData
         };
       },
     {
@@ -642,6 +644,467 @@ function atDate(year, month, day) {
 
 function atTime(hour, minute) {
   return new Date(Date.UTC(2026, 0, 1, hour, minute, 0, 0));
+}
+
+async function seedMembershipTiers(tx) {
+  var tiers = [
+    { name: 'Bronze', minPoints: 0, discountPercent: 0, description: 'Thành viên Đồng' },
+    { name: 'Silver', minPoints: 50, discountPercent: 5, description: 'Thành viên Bạc' },
+    { name: 'Gold', minPoints: 100, discountPercent: 10, description: 'Thành viên Vàng' },
+    { name: 'Platinum', minPoints: 200, discountPercent: 15, description: 'Thành viên Bạch Kim' }
+  ];
+  var seededTiers = {};
+  for (var i = 0; i < tiers.length; i++) {
+    var t = tiers[i];
+    var existing = await tx.membershipTier.findFirst({
+      where: { name: t.name }
+    });
+    if (existing) {
+      seededTiers[t.name.toLowerCase()] = existing;
+    } else {
+      var created = await tx.membershipTier.create({
+        data: t
+      });
+      seededTiers[t.name.toLowerCase()] = created;
+    }
+  }
+  return seededTiers;
+}
+
+async function createSeededOrder(tx, data) {
+  var order = await tx.order.create({
+    data: {
+      branchId: data.branchId,
+      customerId: data.customerId,
+      employeeId: data.employeeId,
+      orderType: data.orderType || 'dine-in',
+      status: data.status,
+      createdAt: data.createdAt,
+      updatedAt: data.createdAt
+    }
+  });
+
+  for (var i = 0; i < data.items.length; i++) {
+    var item = data.items[i];
+    await tx.orderItem.create({
+      data: {
+        orderId: order.id,
+        menuItemId: item.menuItemId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        subtotal: item.quantity * item.unitPrice,
+        status: 'completed'
+      }
+    });
+  }
+
+  var invoice = await tx.invoice.create({
+    data: {
+      orderId: order.id,
+      subtotal: data.totalAmount,
+      discountAmount: data.discountAmount,
+      taxAmount: 0,
+      totalAmount: data.finalAmount,
+      status: 'paid',
+      createdAt: data.createdAt
+    }
+  });
+
+  await tx.payment.create({
+    data: {
+      invoiceId: invoice.id,
+      method: 'cash',
+      amount: data.finalAmount,
+      status: 'success',
+      paidAt: data.createdAt
+    }
+  });
+
+  return order;
+}
+
+async function seedCustomersAndOrders(tx, branches, employees) {
+  var seededTiers = await seedMembershipTiers(tx);
+
+  var latte = await tx.menuItem.findFirst({ where: { name: { contains: 'Latte', mode: 'insensitive' } } });
+  var croissant = await tx.menuItem.findFirst({ where: { name: { contains: 'Croissant', mode: 'insensitive' } } });
+  var espresso = await tx.menuItem.findFirst({ where: { name: { contains: 'Espresso', mode: 'insensitive' } } });
+  var tea = await tx.menuItem.findFirst({ where: { name: { contains: 'Tea', mode: 'insensitive' } } });
+  var menuItems = await tx.menuItem.findMany({ take: 3 });
+
+  var menuItemsList = {
+    latte: latte || menuItems[0],
+    croissant: croissant || menuItems[1] || menuItems[0],
+    espresso: espresso || menuItems[2] || menuItems[0],
+    tea: tea || menuItems[0],
+    default: menuItems[0]
+  };
+
+  var customersData = [
+    {
+      phone: '0987654321',
+      fullName: 'Nguyễn Văn A',
+      email: 'nguyenvana@gmail.com',
+      birthday: '1995-08-15',
+      tier: 'gold',
+      points: 250,
+      spent: 5500000.00,
+      source: 'walk-in',
+      joinedAt: '2025-10-15T08:30:00Z',
+      orders: [
+        {
+          branchIndex: 0,
+          createdAt: '2026-06-20T19:45:00Z',
+          totalAmount: 150000.00,
+          discountAmount: 0.00,
+          finalAmount: 150000.00,
+          pointsEarned: 0,
+          items: [{ menuItemName: 'latte', quantity: 1, unitPrice: 150000.00 }]
+        },
+        {
+          branchIndex: 1,
+          createdAt: '2026-06-24T12:30:00Z',
+          totalAmount: 250000.00,
+          discountAmount: 50000.00,
+          finalAmount: 200000.00,
+          pointsEarned: 20,
+          items: [
+            { menuItemName: 'latte', quantity: 2, unitPrice: 100000.00 },
+            { menuItemName: 'croissant', quantity: 1, unitPrice: 50000.00 }
+          ]
+        }
+      ],
+      extraTransactions: [
+        {
+          type: 'redeem',
+          points: -100,
+          note: 'Đổi 100 điểm lấy Voucher giảm giá 50.000đ',
+          createdAt: '2026-06-22T09:15:00Z'
+        },
+        {
+          type: 'expired',
+          points: -15,
+          note: 'Điểm thưởng hết hạn sử dụng (Quá 365 ngày)',
+          createdAt: '2026-05-01T00:00:00Z'
+        }
+      ]
+    },
+    {
+      phone: '0987654322',
+      fullName: 'Trần Thị B',
+      email: 'tranthib@gmail.com',
+      birthday: '1997-04-20',
+      tier: 'silver',
+      points: 80,
+      spent: 1800000.00,
+      source: 'online-register',
+      joinedAt: '2025-11-20T10:00:00Z',
+      orders: [
+        {
+          branchIndex: 0,
+          createdAt: '2026-06-15T08:15:00Z',
+          totalAmount: 80000.00,
+          discountAmount: 0.00,
+          finalAmount: 80000.00,
+          pointsEarned: 8,
+          items: [{ menuItemName: 'espresso', quantity: 2, unitPrice: 40000.00 }]
+        }
+      ],
+      extraTransactions: [
+        {
+          type: 'earn',
+          points: 10,
+          note: 'Tặng điểm kích hoạt tài khoản mới',
+          createdAt: '2025-11-20T10:05:00Z'
+        }
+      ]
+    },
+    {
+      phone: '0987654323',
+      fullName: 'Lê Văn C',
+      email: 'levanc@gmail.com',
+      birthday: '1990-12-05',
+      tier: 'platinum',
+      points: 450,
+      spent: 12500000.00,
+      source: 'mobile-app',
+      joinedAt: '2025-08-01T09:00:00Z',
+      orders: [
+        {
+          branchIndex: 1,
+          createdAt: '2026-06-22T20:00:00Z',
+          totalAmount: 450000.00,
+          discountAmount: 45000.00,
+          finalAmount: 405000.00,
+          pointsEarned: 40,
+          items: [
+            { menuItemName: 'espresso', quantity: 5, unitPrice: 50000.00 },
+            { menuItemName: 'croissant', quantity: 4, unitPrice: 50000.00 }
+          ]
+        }
+      ],
+      extraTransactions: [
+        {
+          type: 'redeem',
+          points: -200,
+          note: 'Đổi Voucher buffet chiều hoàng hôn',
+          createdAt: '2026-06-10T15:00:00Z'
+        }
+      ]
+    },
+    {
+      phone: '0987654324',
+      fullName: 'Phạm Thị D',
+      email: 'phamthid@gmail.com',
+      birthday: '2000-09-10',
+      tier: 'bronze',
+      points: 15,
+      spent: 350000.00,
+      source: 'walk-in',
+      joinedAt: '2026-02-14T14:00:00Z',
+      orders: [
+        {
+          branchIndex: 0,
+          createdAt: '2026-05-20T10:30:00Z',
+          totalAmount: 150000.00,
+          discountAmount: 0.00,
+          finalAmount: 150000.00,
+          pointsEarned: 15,
+          items: [{ menuItemName: 'tea', quantity: 3, unitPrice: 50000.00 }]
+        }
+      ],
+      extraTransactions: []
+    },
+    {
+      phone: '0987654325',
+      fullName: 'Hoàng Văn E',
+      email: 'hoangvane@gmail.com',
+      birthday: '1988-06-30',
+      tier: 'gold',
+      points: 180,
+      spent: 4200000.00,
+      source: 'online-register',
+      joinedAt: '2025-12-05T16:00:00Z',
+      orders: [
+        {
+          branchIndex: 0,
+          createdAt: '2026-06-18T14:20:00Z',
+          totalAmount: 120000.00,
+          discountAmount: 12000.00,
+          finalAmount: 108000.00,
+          pointsEarned: 10,
+          items: [{ menuItemName: 'latte', quantity: 2, unitPrice: 60000.00 }]
+        }
+      ],
+      extraTransactions: []
+    },
+    {
+      phone: '0987654326',
+      fullName: 'Vũ Thị F',
+      email: 'vuthif@gmail.com',
+      birthday: '1993-01-25',
+      tier: 'silver',
+      points: 95,
+      spent: 2100000.00,
+      source: 'mobile-app',
+      joinedAt: '2026-01-10T11:00:00Z',
+      orders: [
+        {
+          branchIndex: 1,
+          createdAt: '2026-06-11T12:00:00Z',
+          totalAmount: 220000.00,
+          discountAmount: 20000.00,
+          finalAmount: 200000.00,
+          pointsEarned: 20,
+          items: [
+            { menuItemName: 'latte', quantity: 2, unitPrice: 60000.00 },
+            { menuItemName: 'croissant', quantity: 2, unitPrice: 50000.00 }
+          ]
+        }
+      ],
+      extraTransactions: []
+    },
+    {
+      phone: '0987654327',
+      fullName: 'Ngô Văn G',
+      email: 'ngovang@gmail.com',
+      birthday: '1996-11-12',
+      tier: 'platinum',
+      points: 520,
+      spent: 15000000.00,
+      source: 'walk-in',
+      joinedAt: '2025-07-20T08:00:00Z',
+      orders: [
+        {
+          branchIndex: 0,
+          createdAt: '2026-06-23T18:30:00Z',
+          totalAmount: 350000.00,
+          discountAmount: 35000.00,
+          finalAmount: 315000.00,
+          pointsEarned: 35,
+          items: [{ menuItemName: 'latte', quantity: 5, unitPrice: 70000.00 }]
+        }
+      ],
+      extraTransactions: []
+    },
+    {
+      phone: '0987654328',
+      fullName: 'Đỗ Thị H',
+      email: 'dothih@gmail.com',
+      birthday: '1999-07-18',
+      tier: 'bronze',
+      points: 0,
+      spent: 0.00,
+      source: 'online-register',
+      joinedAt: '2026-05-15T15:30:00Z',
+      orders: [],
+      extraTransactions: []
+    }
+  ];
+
+  var createdCustomers = [];
+
+  for (var i = 0; i < customersData.length; i++) {
+    var cData = customersData[i];
+    
+    // Clean up existing data for this customer to make it idempotent
+    var existingCustomer = await tx.customer.findUnique({
+      where: { phone: cData.phone }
+    });
+    if (existingCustomer) {
+      var memberships = await tx.customerMembership.findMany({
+        where: { customerId: existingCustomer.id }
+      });
+      var membershipIds = memberships.map(function(m) { return m.id; });
+      
+      await tx.pointTransaction.deleteMany({
+        where: { customerMembershipId: { in: membershipIds } }
+      });
+      
+      var customerOrders = await tx.order.findMany({
+        where: { customerId: existingCustomer.id },
+        select: { id: true }
+      });
+      var orderIds = customerOrders.map(function(o) { return o.id; });
+      if (orderIds.length > 0) {
+        var invoices = await tx.invoice.findMany({
+          where: { orderId: { in: orderIds } },
+          select: { id: true }
+        });
+        var invoiceIds = invoices.map(function(inv) { return inv.id; });
+        if (invoiceIds.length > 0) {
+          await tx.payment.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
+        }
+        await tx.invoice.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.order.deleteMany({ where: { id: { in: orderIds } } });
+      }
+      
+      await tx.customerMembership.deleteMany({
+        where: { customerId: existingCustomer.id }
+      });
+      
+      await tx.customer.delete({
+        where: { id: existingCustomer.id }
+      });
+    }
+
+    // Create Customer
+    var birthdayDate = cData.birthday ? new Date(Date.UTC(
+      parseInt(cData.birthday.split('-')[0]),
+      parseInt(cData.birthday.split('-')[1]) - 1,
+      parseInt(cData.birthday.split('-')[2])
+    )) : null;
+
+    var customer = await tx.customer.create({
+      data: {
+        phone: cData.phone,
+        fullName: cData.fullName,
+        email: cData.email,
+        birthday: birthdayDate,
+        source: cData.source,
+        avatarUrl: null
+      }
+    });
+
+    // Create Membership
+    var joinedAtDate = new Date(cData.joinedAt);
+    var membership = await tx.customerMembership.create({
+      data: {
+        customerId: customer.id,
+        tierId: seededTiers[cData.tier.toLowerCase()].id,
+        totalPoints: cData.points,
+        totalSpent: cData.spent,
+        joinedAt: joinedAtDate,
+        updatedAt: joinedAtDate
+      }
+    });
+
+    // Create Orders
+    if (cData.orders && cData.orders.length > 0) {
+      for (var o = 0; o < cData.orders.length; o++) {
+        var oData = cData.orders[o];
+        var orderItems = oData.items.map(function(item) {
+          return {
+            menuItemId: menuItemsList[item.menuItemName].id,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice
+          };
+        });
+
+        var branchObj = branches.active[oData.branchIndex % branches.active.length];
+
+        var order = await createSeededOrder(tx, {
+          branchId: branchObj.id,
+          customerId: customer.id,
+          employeeId: employees.owner.id,
+          status: 'paid',
+          createdAt: new Date(oData.createdAt),
+          totalAmount: oData.totalAmount,
+          discountAmount: oData.discountAmount,
+          finalAmount: oData.finalAmount,
+          items: orderItems
+        });
+
+        if (oData.pointsEarned > 0) {
+          await tx.pointTransaction.create({
+            data: {
+              customerMembershipId: membership.id,
+              orderId: order.id,
+              type: 'earn',
+              points: oData.pointsEarned,
+              note: 'Tích điểm từ đơn hàng ORD-' + new Date(order.createdAt).toISOString().slice(2, 10).replace(/-/g, '') + '-' + order.id.slice(-3).toUpperCase(),
+              createdAt: new Date(oData.createdAt)
+            }
+          });
+        }
+      }
+    }
+
+    // Seed Point Transactions
+    if (cData.extraTransactions && cData.extraTransactions.length > 0) {
+      for (var t = 0; t < cData.extraTransactions.length; t++) {
+        var pt = cData.extraTransactions[t];
+        await tx.pointTransaction.create({
+          data: {
+            customerMembershipId: membership.id,
+            type: pt.type,
+            points: pt.points,
+            note: pt.note,
+            createdAt: new Date(pt.createdAt)
+          }
+        });
+      }
+    }
+
+    createdCustomers.push({
+      id: customer.id,
+      phone: customer.phone,
+      fullName: customer.fullName
+    });
+  }
+
+  return createdCustomers;
 }
 
 main();
