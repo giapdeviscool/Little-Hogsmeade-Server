@@ -58,6 +58,7 @@ async function getRecipes(query, user) {
       variantName: recipe.variant ? recipe.variant.name : null,
       ingredientId: recipe.ingredientId,
       ingredientName: recipe.ingredient ? recipe.ingredient.name : 'N/A',
+      ingredientType: recipe.ingredient ? recipe.ingredient.ingredientType : 'raw',
       unit: recipe.ingredient ? recipe.ingredient.unit : 'N/A',
       quantityRequired: recipe.quantityRequired,
       isIngredientActive: recipe.ingredient && typeof recipe.ingredient.isActive !== 'undefined' ? recipe.ingredient.isActive : true
