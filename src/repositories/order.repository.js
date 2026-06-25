@@ -111,6 +111,9 @@ function findLoyaltyConfigByBranch(branchId, tx) {
 }
 
 function findCustomerMembershipByCustomerId(customerId, tx) {
+  if (!customerId) {
+    return null;
+  }
   return getDb(tx).customerMembership.findFirst({
     where: {
       customerId: customerId
@@ -226,50 +229,20 @@ function deleteOrderById(id, tx) {
   });
 }
 
-async function calculateCashRevenueForShift(shiftId, tx) {
+async function countPendingOrdersForBranch(branchId, tx) {
   var db = getDb(tx);
-  var invoices = await db.invoice.findMany({
+  var openStatuses = ['pending', 'confirmed', 'preparing', 'in_progress', 'serving', 'open'];
+  
+  var count = await db.order.count({
     where: {
-      order: {
-        cashierShiftId: shiftId
+      branchId: branchId,
+      status: {
+        in: openStatuses
       }
-    },
-    include: {
-      payments: true,
-      order: true
     }
   });
-
-  var cashSales = 0;
-  var cashRefunds = 0;
-  var pendingOrders = 0;
-  var openStatuses = ['pending', 'confirmed', 'preparing', 'in_progress', 'serving', 'open'];
-
-  for (var i = 0; i < invoices.length; i++) {
-    var invoice = invoices[i];
-    var orderStatus = String(invoice.order.status || '').trim().toLowerCase();
-
-    if (openStatuses.includes(orderStatus)) {
-      pendingOrders += 1;
-    }
-
-    for (var j = 0; j < invoice.payments.length; j++) {
-      var payment = invoice.payments[j];
-      if (payment.method === 'cash') {
-        if (payment.status === 'completed') {
-          cashSales += payment.amount;
-        } else if (payment.status === 'refunded') {
-          cashRefunds += payment.amount;
-        }
-      }
-    }
-  }
-
-  return {
-    cashSales: cashSales,
-    cashRefunds: cashRefunds,
-    pendingOrders: pendingOrders
-  };
+  
+  return count;
 }
 
 function findCusomterByPhone(phone, tx) {
@@ -311,5 +284,5 @@ module.exports = {
   deleteOrderById: deleteOrderById,
   findCusomterByPhone: findCusomterByPhone,
   createCustomer: createCustomer,
-  calculateCashRevenueForShift: calculateCashRevenueForShift
+  countPendingOrdersForBranch: countPendingOrdersForBranch
 };

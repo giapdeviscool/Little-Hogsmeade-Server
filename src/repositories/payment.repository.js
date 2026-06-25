@@ -93,6 +93,9 @@ function findLoyaltyConfigByBranch(branchId, tx) {
 }
 
 function findCustomerMembershipByCustomerId(customerId, tx) {
+  if (!customerId) {
+    return null;
+  }
   return getDb(tx).customerMembership.findFirst({
     where: {
       customerId: customerId

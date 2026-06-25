@@ -31,6 +31,7 @@ async function openShift(branchId, employeeId, payload) {
     branchId: branchId,
     employeeId: employeeId,
     startingFloat: startingFloat,
+    expectedCashSystem: startingFloat,
     status: 'OPEN',
     openedAt: new Date()
   });
@@ -68,18 +69,19 @@ async function requestClosure(shiftId, branchId) {
     throwHttpError(400, 'Shift is not open');
   }
 
-  var aggregation = await orderRepository.calculateCashRevenueForShift(shiftId);
+  var pendingOrdersCount = await orderRepository.countPendingOrdersForBranch(shift.branchId);
   
-  if (aggregation.pendingOrders > 0) {
+  if (pendingOrdersCount > 0) {
     throwHttpError(409, 'Cannot close shift with pending orders');
   }
 
-  var expectedCash = shift.startingFloat + aggregation.cashSales - aggregation.cashRefunds;
+  var expectedCash = shift.expectedCashSystem !== null ? shift.expectedCashSystem : shift.startingFloat;
+  var cashSales = Math.max(0, expectedCash - shift.startingFloat);
 
   return {
     expected_cash_system: expectedCash,
-    cash_sales: aggregation.cashSales,
-    cash_refunds: aggregation.cashRefunds,
+    cash_sales: cashSales,
+    cash_refunds: 0,
     message: 'Please request the TOTP code from the manager.'
   };
 }
@@ -115,13 +117,13 @@ async function closeShift(shiftId, branchId, payload, currentUser) {
   }
 
   return prisma.$transaction(async function(tx) {
-    var aggregation = await orderRepository.calculateCashRevenueForShift(shiftId, tx);
+    var pendingOrdersCount = await orderRepository.countPendingOrdersForBranch(shift.branchId, tx);
     
-    if (aggregation.pendingOrders > 0) {
+    if (pendingOrdersCount > 0) {
       throwHttpError(409, 'Cannot close shift with pending orders');
     }
 
-    var expectedCash = shift.startingFloat + aggregation.cashSales - aggregation.cashRefunds;
+    var expectedCash = shift.expectedCashSystem !== null ? shift.expectedCashSystem : shift.startingFloat;
     var discrepancyAmount = actualCashCounted - expectedCash;
 
     var updatedShift = await cashierShiftRepository.updateCashierShift(shiftId, {
