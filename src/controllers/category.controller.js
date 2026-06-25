@@ -36,9 +36,24 @@ async function deleteCategory(req, res, next) {
   }
 }
 
+async function moveCategory(req, res, next) {
+  try {
+    var direction = req.body.direction; // 'up' or 'down'
+    var id = req.params.id;
+    var result = await categoryService.swapDisplayOrder(id, direction, req.user);
+    res.json({ message: 'Category moved successfully', data: result });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
+    }
+    next(error);
+  }
+}
+
 module.exports = {
   getCategories: getCategories,
   createCategory: createCategory,
   updateCategory: updateCategory,
-  deleteCategory: deleteCategory
+  deleteCategory: deleteCategory,
+  moveCategory: moveCategory
 };

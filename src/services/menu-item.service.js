@@ -153,8 +153,96 @@ async function updateMenuItemStatus(id, isActive, user) {
   return await menuItemRepository.updateMenuItemStatus(id, isActive);
 }
 
+async function updateMenuItem(id, data, user, fileUrl) {
+  var roleName = (user.roleName || '').trim().toLowerCase();
+  var isOwner = roleName.includes('owner');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+
+  if (!isOwner && !isAdmin) {
+    var errRole = new Error('Không có quyền cập nhật món ăn');
+    errRole.status = 403;
+    throw errRole;
+  }
+
+  var item = await menuItemRepository.findMenuItemById(id);
+  if (!item) {
+    var errNotFound = new Error('Không tìm thấy món ăn');
+    errNotFound.status = 404;
+    throw errNotFound;
+  }
+
+  if (isAdmin) {
+    if (item.branchId !== null && item.branchId !== user.branchId) {
+      var errBranch = new Error('Không có quyền cập nhật món ăn của chi nhánh khác');
+      errBranch.status = 403;
+      throw errBranch;
+    }
+  }
+
+  var itemData = {};
+
+  if (data.name) {
+    // Check duplicate if name or category changed
+    var targetCategoryId = data.categoryId || item.categoryId;
+    var existing = await menuItemRepository.findMenuItemByNameAndCategory(data.name, targetCategoryId);
+    if (existing && existing.id !== id) {
+      var errDup = new Error('Tên món đã tồn tại trong danh mục này');
+      errDup.status = 409;
+      throw errDup;
+    }
+    itemData.name = data.name;
+  }
+
+  if (data.categoryId) itemData.categoryId = data.categoryId;
+  
+  if (data.basePrice !== undefined) {
+    var price = parseFloat(data.basePrice);
+    if (isNaN(price) || price <= 0) {
+      var errPrice = new Error('Giá bán phải lớn hơn 0');
+      errPrice.status = 400;
+      throw errPrice;
+    }
+    itemData.basePrice = price;
+  }
+
+  if (data.description !== undefined) itemData.description = data.description;
+  if (fileUrl) itemData.imageUrl = fileUrl;
+
+  return await menuItemRepository.updateMenuItem(id, itemData);
+}
+
+async function moveItemsToCategory(menuItemIds, categoryId, user) {
+  var roleName = (user.roleName || '').trim().toLowerCase();
+  var isOwner = roleName.includes('owner');
+
+  if (!isOwner) {
+    var errRole = new Error('Chỉ Owner mới có quyền chuyển món giữa các danh mục');
+    errRole.status = 403;
+    throw errRole;
+  }
+
+  if (!Array.isArray(menuItemIds) || menuItemIds.length === 0 || !categoryId) {
+    var errParams = new Error('Thiếu tham số menuItemIds hoặc categoryId');
+    errParams.status = 400;
+    throw errParams;
+  }
+
+  // Check if category exists
+  var categoryRepository = require('../repositories/category.repository');
+  var category = await categoryRepository.findCategoryById(categoryId);
+  if (!category) {
+    var errNotFound = new Error('Danh mục không tồn tại');
+    errNotFound.status = 404;
+    throw errNotFound;
+  }
+
+  return await menuItemRepository.moveItemsToCategory(menuItemIds, categoryId);
+}
+
 module.exports = {
   getMenuItems: getMenuItems,
   createMenuItem: createMenuItem,
-  updateMenuItemStatus: updateMenuItemStatus
+  updateMenuItemStatus: updateMenuItemStatus,
+  updateMenuItem: updateMenuItem,
+  moveItemsToCategory: moveItemsToCategory
 };

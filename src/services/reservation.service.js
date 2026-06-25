@@ -21,33 +21,14 @@ async function checkInReservation(reservationId, payload, currentUser) {
 
 
   var result = await prisma.$transaction(async function (tx) {
-    // var customerId = null;
-    // var membership = null;
-
-    // if (reservation.guestPhone) {
-    //   var customer = await orderRepository.findCusomterByPhone(reservation.guestPhone, tx);
-    //   if (!customer) {
-
-    //     var customer = await orderRepository.createCustomer({
-    //       phone: reservation.guestPhone,
-    //       fullName: reservation.guestName,
-    //       source: 'online-reservation'
-    //     }, tx);
-    //   } else {
-    //     customerId = customer.id;
-    //   }
-    // } else return;
-    // if (!membership) {
-    //   membership = await orderRepository.createCustomerMembership({
-    //     customerId: customerId,
-    //     totalPoints: 0,
-    //     totalSpent: 0
-    //   }, tx);
-    // }
+    var customer = await findOrCreateReservationCustomer(tx, reservation.guestPhone, reservation.guestName);
 
     var updatedReservation = await tx.reservation.update({
       where: { id: reservation.id },
-      data: { status: 'checked_in' }
+      data: {
+        customerId: customer.id,
+        status: 'checked_in'
+      }
     });
     var updatedTable = await tx.table.update({
       where: { id: reservation.tableId },
@@ -142,6 +123,30 @@ function assertEmployeeAccess(currentUser, branchId) {
   if (!authMiddleware.isOwner(currentUser) && currentUser.branchId !== branchId) {
     throwHttpError(403, 'You can only manage reservations for your own branch');
   }
+}
+
+async function findOrCreateReservationCustomer(tx, phone, fullName) {
+  var normalizedPhone = normalizeRequiredString(phone, 'guestPhone');
+  var normalizedName = normalizeRequiredString(fullName, 'guestName');
+
+  var customer = await orderRepository.findCusomterByPhone(normalizedPhone, tx);
+  if (customer) {
+    return customer;
+  }
+
+  return orderRepository.createCustomer({
+    phone: normalizedPhone,
+    fullName: normalizedName,
+    source: 'online-reservation'
+  }, tx);
+}
+
+function normalizeRequiredString(value, fieldName) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throwHttpError(400, fieldName + ' is required');
+  }
+
+  return value.trim();
 }
 
 function assertValidObjectId(value, fieldName) {

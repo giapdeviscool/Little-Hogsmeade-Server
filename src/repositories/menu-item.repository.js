@@ -65,6 +65,13 @@ async function updateMenuItemStatus(id, isActive) {
   });
 }
 
+async function updateMenuItem(id, data) {
+  return prisma.menuItem.update({
+    where: { id: id },
+    data: data
+  });
+}
+
 async function findCurrentToppingGroupAssignments(menuItemId) {
   return prisma.menuItemToppingGroup.findMany({
     where: { menuItemId: menuItemId },
@@ -93,6 +100,13 @@ async function removeToppingGroupAssignments(menuItemId, toppingGroupIds) {
   });
 }
 
+async function moveItemsToCategory(menuItemIds, categoryId) {
+  return prisma.menuItem.updateMany({
+    where: { id: { in: menuItemIds } },
+    data: { categoryId: categoryId }
+  });
+}
+
 module.exports = {
   findMenuItems: findMenuItems,
   countMenuItems: countMenuItems,
@@ -101,7 +115,9 @@ module.exports = {
   findMenuItemById: findMenuItemById,
   countRecipesForMenuItem: countRecipesForMenuItem,
   updateMenuItemStatus: updateMenuItemStatus,
+  updateMenuItem: updateMenuItem,
   findCurrentToppingGroupAssignments: findCurrentToppingGroupAssignments,
   assignToppingGroups: assignToppingGroups,
-  removeToppingGroupAssignments: removeToppingGroupAssignments
+  removeToppingGroupAssignments: removeToppingGroupAssignments,
+  moveItemsToCategory: moveItemsToCategory
 };

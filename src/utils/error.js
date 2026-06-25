@@ -1,11 +1,18 @@
+function isKnownPrismaRequestError(error) {
+  return Boolean(error && error.name === 'PrismaClientKnownRequestError');
+}
+
+function isUniqueConstraintError(error) {
+  return Boolean(isKnownPrismaRequestError(error) && error.code === 'P2002');
+}
+
 function isDatabaseError(error) {
-  if (!error) {
+  if (!error || isUniqueConstraintError(error)) {
     return false;
   }
 
   return Boolean(
-    error.name === 'PrismaClientKnownRequestError'
-    || error.name === 'PrismaClientInitializationError'
+    error.name === 'PrismaClientInitializationError'
     || error.name === 'PrismaClientUnknownRequestError'
     || error.code === 'P1001'
     || error.code === 'P2010'
@@ -14,6 +21,17 @@ function isDatabaseError(error) {
 }
 
 function normalizeError(error) {
+  if (isUniqueConstraintError(error)) {
+    return {
+      statusCode: 409,
+      payload: {
+        message: 'Resource already exists',
+        code: 'UNIQUE_CONSTRAINT_VIOLATION',
+        target: error.meta && error.meta.target
+      }
+    };
+  }
+
   if (isDatabaseError(error)) {
     return {
       statusCode: 503,
@@ -33,6 +51,17 @@ function normalizeError(error) {
 }
 
 function logError(error, req) {
+  if (isUniqueConstraintError(error)) {
+    console.error(
+      '[conflict]',
+      req.method,
+      req.originalUrl,
+      'code=' + error.code,
+      'target=' + JSON.stringify(error.meta && error.meta.target)
+    );
+    return;
+  }
+
   if (isDatabaseError(error)) {
     console.error(
       '[database]',
@@ -63,6 +92,7 @@ function getDatabaseLogMessage(error) {
 
 module.exports = {
   isDatabaseError: isDatabaseError,
+  isUniqueConstraintError: isUniqueConstraintError,
   normalizeError: normalizeError,
   logError: logError
 };

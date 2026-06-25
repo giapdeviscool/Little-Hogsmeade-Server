@@ -9,6 +9,22 @@ async function getDashboard(req, res, next) {
   }
 }
 
+async function exportDashboard(req, res, next) {
+  try {
+    const result = await chainService.exportDashboard(req.query || {});
+    console.log('Exporting dashboard:', result);
+    const safeFileName = encodeURIComponent(result.fileName);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"; filename*=UTF-8''${safeFileName}`);
+    
+    return res.send(result.buffer);
+  } catch (error) {
+    console.error('[EXPORT_EXCEL_CRITICAL_ERROR]:', error);
+    return next(error);
+  }
+}
+
 async function getConfig(req, res, next) {
   try {
     var result = await chainService.getConfig();
@@ -101,6 +117,7 @@ async function getMenuSyncPreview(req, res, next) {
 
 module.exports = {
   getDashboard: getDashboard,
+  exportDashboard: exportDashboard,
   getConfig: getConfig,
   updateConfig: updateConfig,
   syncMenu: syncMenu,
