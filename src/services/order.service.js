@@ -77,10 +77,18 @@ async function createOrder(branchId, employeeId, payload) {
   var discountAmount = normalizeNumber(payload.discountAmount);
   var taxAmount = normalizeNumber(payload.taxAmount);
   var items = Array.isArray(payload.items) ? payload.items : [];
-  var cashierShiftId = payload.cashierShiftId || null;
 
   var result = await prisma.$transaction(async function(tx) {
     var table = null;
+
+    // Automatically resolve the active cashier shift for this branch
+    var activeShift = await tx.cashierShift.findFirst({
+      where: {
+        branchId: branchId,
+        status: 'OPEN'
+      }
+    });
+    var cashierShiftId = (activeShift && activeShift.id) || payload.cashierShiftId || null;
 
     if (tableId) {
       table = await tx.table.findUnique({

@@ -26,6 +26,7 @@ var reservationRoutes = require("./reservation.routes");
 var adminRoutes = require("./admin.routes");
 var cashierShiftRoutes = require("./cashier-shift.routes");
 var paymentRoutes = require("./payment.routes");
+var otpRoutes = require("./otp.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 var router = express.Router();
@@ -56,6 +57,7 @@ router.use("/reservations", reservationRoutes);
 router.use("/cashier-shifts", cashierShiftRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/admin", adminRoutes);
+router.use("/otp", otpRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({
