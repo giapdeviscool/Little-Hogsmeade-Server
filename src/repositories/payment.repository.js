@@ -72,13 +72,19 @@ function findActiveShiftByBranch(branchId, tx) {
   });
 }
 
-function incrementShiftExpectedCash(shiftId, amount, tx) {
-  return getDb(tx).cashierShift.update({
+async function incrementShiftExpectedCash(shiftId, amount, tx) {
+  var db = getDb(tx);
+  var shift = await db.cashierShift.findUnique({
+    where: { id: shiftId },
+    select: { expectedCashSystem: true, startingFloat: true }
+  });
+  var current = shift && shift.expectedCashSystem !== null
+    ? shift.expectedCashSystem
+    : (shift ? shift.startingFloat : 0);
+  return db.cashierShift.update({
     where: { id: shiftId },
     data: {
-      expectedCashSystem: {
-        increment: amount
-      }
+      expectedCashSystem: current + amount
     }
   });
 }
