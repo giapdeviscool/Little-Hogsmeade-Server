@@ -96,14 +96,15 @@ async function closeShift(shiftId, branchId, payload, currentUser) {
     throwHttpError(400, 'Shift is not open');
   }
 
-  const { authenticator } = require('otplib');
+  const { verifySync } = require('otplib');
   const code = payload.code || payload.otp;
 
   if (!code || typeof code !== 'string') {
     throwHttpError(400, 'TOTP code is required');
   }
 
-  const isValid = authenticator.check(code, process.env.ADMIN_TOTP_SECRET);
+  const verification = verifySync({ token: code, secret: process.env.ADMIN_TOTP_SECRET });
+  const isValid = verification && verification.valid;
   if (!isValid) {
     throwHttpError(401, 'Invalid or expired Admin OTP token.');
   }

@@ -1,7 +1,7 @@
 var shiftService = require('../services/shift.service');
 var prisma = require('../lib/prisma');
 var orderRepository = require('../repositories/order.repository');
-var { authenticator } = require('otplib');
+var { verifySync } = require('otplib');
 
 async function getShifts(req, res, next) {
   try {
@@ -144,7 +144,8 @@ async function finalizeClosure(req, res, next) {
       return res.status(400).json({ error: 'No Admin TOTP secret configured' });
     }
 
-    const isValid = authenticator.check(code, secret);
+    const verification = verifySync({ token: code, secret: secret });
+    const isValid = verification && verification.valid;
     if (!isValid) {
       return res.status(400).json({ error: "Invalid or expired Admin OTP token." });
     }
