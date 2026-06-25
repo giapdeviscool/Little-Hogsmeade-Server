@@ -350,12 +350,15 @@ model Customer {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   phone        String    @unique
   fullName     String    @map("full_name")
+  name         String    @default("")
   email        String?   @unique
   birthday     DateTime?
   avatarUrl    String?   @map("avatar_url")
   createdAt    DateTime  @default(now()) @map("created_at")
   source       String    @default("walk-in")
   passwordHash String?
+  points       Int       @default(0)
+  tier         String    @default("Bronze")
 
   customerMemberships CustomerMembership[] @relation("CustomerMembership_customerId_to_Customer")
   orders              Order[]              @relation("Order_customerId_to_Customer")
