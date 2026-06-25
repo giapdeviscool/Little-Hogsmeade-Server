@@ -13,13 +13,53 @@ function getDelegate(resource) {
 }
 
 function findMany(resource, options) {
-  return getDelegate(resource).findMany(options || {});
+  var opt = options || {};
+  if (resource.name === 'delivery_orders') {
+    opt.include = {
+      order: {
+        include: {
+          invoices: true,
+          orderItems: {
+            include: {
+              menuItem: true
+            }
+          }
+        }
+      },
+      deliveryEmployee: true
+    };
+  } else if (resource.name === 'employees') {
+    opt.include = {
+      role: true,
+      branch: true
+    };
+  }
+  return getDelegate(resource).findMany(opt);
 }
 
 function findById(resource, id) {
-  return getDelegate(resource).findUnique({
-    where: { id: id }
-  });
+  var query = { where: { id: id } };
+  if (resource.name === 'delivery_orders') {
+    query.include = {
+      order: {
+        include: {
+          invoices: true,
+          orderItems: {
+            include: {
+              menuItem: true
+            }
+          }
+        }
+      },
+      deliveryEmployee: true
+    };
+  } else if (resource.name === 'employees') {
+    query.include = {
+      role: true,
+      branch: true
+    };
+  }
+  return getDelegate(resource).findUnique(query);
 }
 
 function create(resource, data) {

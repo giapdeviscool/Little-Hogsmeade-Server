@@ -2,6 +2,7 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var prisma = require('../lib/prisma');
 var reservationRepository = require('../repositories/reservation.repository');
 var socket = require('../realtime/socket');
+const orderRepository = require('../repositories/order.repository');
 
 var ACTIVE_RESERVATION_STATUSES = ['pending', 'confirmed', 'reserved'];
 
@@ -16,7 +17,34 @@ async function checkInReservation(reservationId, payload, currentUser) {
   var guestCount = payload.actual_guest_count === undefined
     ? reservation.guestCount
     : payload.actual_guest_count;
-  var result = await prisma.$transaction(async function(tx) {
+  // console.log("reservation : ", reservation)
+
+
+  var result = await prisma.$transaction(async function (tx) {
+    // var customerId = null;
+    // var membership = null;
+
+    // if (reservation.guestPhone) {
+    //   var customer = await orderRepository.findCusomterByPhone(reservation.guestPhone, tx);
+    //   if (!customer) {
+
+    //     var customer = await orderRepository.createCustomer({
+    //       phone: reservation.guestPhone,
+    //       fullName: reservation.guestName,
+    //       source: 'online-reservation'
+    //     }, tx);
+    //   } else {
+    //     customerId = customer.id;
+    //   }
+    // } else return;
+    // if (!membership) {
+    //   membership = await orderRepository.createCustomerMembership({
+    //     customerId: customerId,
+    //     totalPoints: 0,
+    //     totalSpent: 0
+    //   }, tx);
+    // }
+
     var updatedReservation = await tx.reservation.update({
       where: { id: reservation.id },
       data: { status: 'checked_in' }
@@ -48,7 +76,7 @@ async function markReservationNoShow(reservationId, currentUser) {
   var reservation = await getAuthorizedReservation(reservationId, currentUser);
   assertActiveReservation(reservation);
 
-  var result = await prisma.$transaction(async function(tx) {
+  var result = await prisma.$transaction(async function (tx) {
     var updatedReservation = await tx.reservation.update({
       where: { id: reservation.id },
       data: { status: 'no_show' }

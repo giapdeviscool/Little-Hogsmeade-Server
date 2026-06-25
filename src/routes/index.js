@@ -24,6 +24,9 @@ var tableRoutes = require("./table.routes");
 var reservationRoutes = require("./reservation.routes");
 var customerRoutes = require("./customer.routes");
 var adminRoutes = require("./admin.routes");
+var deliveryRoutes = require("./delivery.routes");
+var deliveryController = require("../controllers/delivery.controller");
+var authMiddleware = require("../middlewares/auth.middleware");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 var router = express.Router();
@@ -52,6 +55,8 @@ router.use("/tables", tableRoutes);
 router.use("/reservations", reservationRoutes);
 router.use("/customers", customerRoutes);
 router.use("/admin", adminRoutes);
+router.use("/delivery/orders", deliveryRoutes);
+router.post("/pos/orders/delivery", authMiddleware.authenticate, deliveryController.createDeliveryOrder);
 
 router.get("/resources", function (req, res) {
   res.json({

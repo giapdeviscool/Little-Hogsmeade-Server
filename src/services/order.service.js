@@ -104,6 +104,12 @@ async function createOrder(branchId, employeeId, payload) {
   }
 
   var customerId = payload.customerId || null;
+  var customerPhone = payload.customerPhone;
+  if (customerPhone && typeof customerPhone === 'string') {
+    customerPhone = customerPhone.trim();
+  } else {
+    customerPhone = null;
+  }
   var tableId = payload.tableId || null;
   var orderStatus = payload.status || (tableId ? 'pending' : 'paid');
   var paymentMethod = payload.paymentMethod;
@@ -111,8 +117,29 @@ async function createOrder(branchId, employeeId, payload) {
   var taxAmount = normalizeNumber(payload.taxAmount);
   var items = Array.isArray(payload.items) ? payload.items : [];
 
-  var result = await prisma.$transaction(async function(tx) {
+  var result = await prisma.$transaction(async function (tx) {
     var table = null;
+
+    if (customerPhone) {
+      var existingCustomer = await tx.customer.findUnique({
+        where: { phone: customerPhone }
+      });
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+      } else {
+        var fullName = (payload.customerName && typeof payload.customerName === 'string' && payload.customerName.trim())
+          ? payload.customerName.trim()
+          : 'Khách hàng ' + customerPhone.slice(-4);
+        var newCustomer = await tx.customer.create({
+          data: {
+            phone: customerPhone,
+            fullName: fullName,
+            source: 'walk-in'
+          }
+        });
+        customerId = newCustomer.id;
+      }
+    }
 
     if (tableId) {
       table = await tx.table.findUnique({
@@ -188,6 +215,11 @@ async function createOrder(branchId, employeeId, payload) {
     }
 
     var totals = calculateOrderTotals(items, discountAmount, taxAmount);
+    if (normalizeOrderType(payload.orderType || '') === 'delivery') {
+      var deliveryInfo = payload.deliveryInfo || {};
+      var dFee = normalizeNumber(deliveryInfo.deliveryFee || payload.deliveryFee);
+      totals.totalAmount += dFee;
+    }
 
     var invoice = await orderRepository.createInvoice({
       orderId: order.id,
@@ -266,13 +298,31 @@ async function createOrder(branchId, employeeId, payload) {
       });
     }
 
+    var deliveryOrder = null;
+    if (normalizeOrderType(payload.orderType || '') === 'delivery') {
+      var deliveryInfo = payload.deliveryInfo || {};
+      deliveryOrder = await tx.deliveryOrder.create({
+        data: {
+          orderId: order.id,
+          customerName: deliveryInfo.customerName || payload.customerName || 'Khách hàng',
+          customerPhone: deliveryInfo.customerPhone || payload.customerPhone || '',
+          deliveryAddress: deliveryInfo.deliveryAddress || payload.deliveryAddress || '',
+          deliveryFee: normalizeNumber(deliveryInfo.deliveryFee || payload.deliveryFee),
+          estimatedTime: deliveryInfo.estimatedTime ? new Date(deliveryInfo.estimatedTime) : null,
+          status: 'pending',
+          note: deliveryInfo.note || payload.note || null
+        }
+      });
+    }
+
     return {
       order: order,
       items: createdItems,
       invoice: invoice,
       payment: payment,
       loyalty: loyaltyResult,
-      table: occupiedTable
+      table: occupiedTable,
+      deliveryOrder: deliveryOrder
     };
   });
 
@@ -294,7 +344,7 @@ async function updateOrderStatus(id, status) {
     throwHttpError(400, 'Status is required');
   }
 
-  return prisma.$transaction(async function(tx) {
+  return prisma.$transaction(async function (tx) {
     var order = await orderRepository.findOrderById(id, tx);
     if (!order) {
       throwHttpError(404, 'Order not found');
@@ -305,6 +355,50 @@ async function updateOrderStatus(id, status) {
 
     if (invoice) {
       await orderRepository.updateInvoiceStatusByOrderId(id, status, tx);
+
+      if (status === 'paid') {
+        await orderRepository.updatePaymentStatusByInvoiceId(invoice.id, 'completed', tx);
+
+        if (order.customerId) {
+          if (!invoice.pointsEarned || invoice.pointsEarned === 0) {
+            var loyaltyConfig = await orderRepository.findLoyaltyConfigByBranch(order.branchId, tx);
+            var pointsEarned = calculateLoyaltyPoints(
+              loyaltyConfig,
+              invoice.totalAmount,
+              invoice.discountAmount
+            );
+
+            if (pointsEarned !== null && pointsEarned > 0) {
+              invoice = await orderRepository.updateInvoice(invoice.id, {
+                pointsEarned: pointsEarned
+              }, tx);
+
+              var membership = await orderRepository.findCustomerMembershipByCustomerId(order.customerId, tx);
+
+              if (!membership) {
+                membership = await orderRepository.createCustomerMembership({
+                  customerId: order.customerId,
+                  totalPoints: 0,
+                  totalSpent: 0
+                }, tx);
+              }
+
+              var updatedMembership = await orderRepository.updateCustomerMembership(membership.id, {
+                totalPoints: membership.totalPoints + pointsEarned,
+                totalSpent: membership.totalSpent + invoice.totalAmount
+              }, tx);
+
+              await orderRepository.createPointTransaction({
+                customerMembershipId: updatedMembership.id,
+                orderId: id,
+                type: 'earn',
+                points: pointsEarned,
+                note: 'Loyalty points earned for paid order'
+              }, tx);
+            }
+          }
+        }
+      }
 
       if (status === 'cancelled' || status === 'refunded') {
         var paymentStatus = status === 'cancelled' ? 'failed' : 'refunded';
@@ -343,7 +437,7 @@ async function updateOrderStatus(id, status) {
 async function addOrderItems(orderId, items, currentUser) {
   assertValidId(orderId);
 
-  var result = await prisma.$transaction(async function(tx) {
+  var result = await prisma.$transaction(async function (tx) {
     var order = await orderRepository.findOrderById(orderId, tx);
 
     if (!order) {
@@ -418,7 +512,7 @@ async function changeOrderTable(orderId, targetTableId, currentUser) {
   assertValidId(orderId);
   assertValidId(targetTableId);
 
-  var result = await prisma.$transaction(async function(tx) {
+  var result = await prisma.$transaction(async function (tx) {
     var order = await tx.order.findUnique({
       where: { id: orderId }
     });
@@ -477,7 +571,7 @@ async function changeOrderTable(orderId, targetTableId, currentUser) {
     var activeOrderAtTarget = await tx.order.findFirst({
       where: {
         tableId: targetTable.id,
-        status: { in: OPEN_ORDER_STATUSES.concat(OPEN_ORDER_STATUSES.map(function(status) { return status.toUpperCase(); })) }
+        status: { in: OPEN_ORDER_STATUSES.concat(OPEN_ORDER_STATUSES.map(function (status) { return status.toUpperCase(); })) }
       },
       select: { id: true }
     });
@@ -538,7 +632,7 @@ async function changeOrderTable(orderId, targetTableId, currentUser) {
 async function deleteOrder(id) {
   assertValidId(id);
 
-  return prisma.$transaction(async function(tx) {
+  return prisma.$transaction(async function (tx) {
     var order = await orderRepository.findOrderById(id, tx);
     if (!order) {
       throwHttpError(404, 'Order not found');
@@ -553,7 +647,7 @@ async function deleteOrder(id) {
     }
 
     var orderItems = await orderRepository.findOrderItemsByOrderId(id, tx);
-    var orderItemIds = orderItems.map(function(item) {
+    var orderItemIds = orderItems.map(function (item) {
       return item.id;
     });
 

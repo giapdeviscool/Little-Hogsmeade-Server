@@ -215,6 +215,18 @@ function deleteOrderById(id, tx) {
   });
 }
 
+function findCusomterByPhone(phone, tx) {
+  return getDb(tx).customer.findUnique({
+    where: { phone: phone }
+  });
+}
+
+function createCustomer(data, tx) {
+  return getDb(tx).customer.create({
+    data: data
+  });
+}
+
 module.exports = {
   createOrder: createOrder,
   createOrderItem: createOrderItem,
@@ -239,5 +251,7 @@ module.exports = {
   deletePointTransactionsByOrderId: deletePointTransactionsByOrderId,
   deletePaymentsByInvoiceId: deletePaymentsByInvoiceId,
   deleteInvoiceByOrderId: deleteInvoiceByOrderId,
-  deleteOrderById: deleteOrderById
+  deleteOrderById: deleteOrderById,
+  findCusomterByPhone: findCusomterByPhone,
+  createCustomer: createCustomer
 };
