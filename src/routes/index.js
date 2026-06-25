@@ -22,6 +22,7 @@ var recipeRoutes = require("./recipe.routes");
 var ingredientRoutes = require("./ingredient.routes");
 var tableRoutes = require("./table.routes");
 var reservationRoutes = require("./reservation.routes");
+var customerRoutes = require("./customer.routes");
 var adminRoutes = require("./admin.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
@@ -49,6 +50,7 @@ router.use("/recipes", recipeRoutes);
 router.use("/ingredients", ingredientRoutes);
 router.use("/tables", tableRoutes);
 router.use("/reservations", reservationRoutes);
+router.use("/customers", customerRoutes);
 router.use("/admin", adminRoutes);
 
 router.get("/resources", function (req, res) {
@@ -72,7 +74,8 @@ resourcesConfig.getResources().forEach(function (resource) {
     resource.name === "menu_items" ||
     resource.name === "categories" ||
     resource.name === "topping_groups" ||
-    resource.name === "ingredients"
+    resource.name === "ingredients" ||
+    resource.name === "customers"
   ) {
     return;
   }
