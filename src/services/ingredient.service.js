@@ -23,6 +23,16 @@ async function getIngredients(query, user) {
   return ingredientRepository.findIngredients(filters);
 }
 
+async function getIngredientById(branchId, id) {
+  var ingredient = await ingredientRepository.findIngredientById(id);
+  if (!ingredient || ingredient.branchId !== branchId) {
+    var err = new Error('Không tìm thấy nguyên liệu');
+    err.status = 404;
+    throw err;
+  }
+  return ingredient;
+}
+
 async function createIngredient(data, user) {
   var roleName = (user.roleName || '').trim().toLowerCase();
   var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
@@ -51,6 +61,7 @@ async function createIngredient(data, user) {
     importUnit: data.importUnit || null,
     conversionRate: parseFloat(data.conversionRate) || 1.0,
     category: data.category || null,
+    ingredientType: data.ingredientType || 'raw',
     minStockLevel: parseFloat(data.minStockLevel) || 0,
     currentStock: parseFloat(data.currentStock) || 0,
     branchId: branchId,
@@ -100,9 +111,14 @@ async function updateIngredient(id, data, user) {
     importUnit: data.importUnit !== undefined ? data.importUnit : existing.importUnit,
     conversionRate: data.conversionRate !== undefined ? parseFloat(data.conversionRate) : existing.conversionRate,
     category: data.category !== undefined ? data.category : existing.category,
+    ingredientType: data.ingredientType !== undefined ? data.ingredientType : existing.ingredientType,
     minStockLevel: data.minStockLevel !== undefined ? parseFloat(data.minStockLevel) : existing.minStockLevel,
     isActive: data.isActive !== undefined ? data.isActive : existing.isActive
   };
+
+  if (isOwner && data.branchId) {
+    updateData.branchId = data.branchId;
+  }
 
   // Check duplication if name or sku changed
   if (updateData.name !== existing.name || updateData.sku !== existing.sku) {
@@ -119,6 +135,7 @@ async function updateIngredient(id, data, user) {
 
 module.exports = {
   getIngredients: getIngredients,
+  getIngredientById: getIngredientById,
   createIngredient: createIngredient,
   updateIngredient: updateIngredient
 };
