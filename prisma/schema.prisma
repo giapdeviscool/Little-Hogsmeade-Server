@@ -350,8 +350,7 @@ model Customer {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   phone        String    @unique
   fullName     String    @map("full_name")
-  name         String    @default("")
-  email        String?   @unique
+  email        String?
   birthday     DateTime?
   avatarUrl    String?   @map("avatar_url")
   createdAt    DateTime  @default(now()) @map("created_at")
