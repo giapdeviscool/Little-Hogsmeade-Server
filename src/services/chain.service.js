@@ -1,11 +1,12 @@
 var branchRepository = require('../repositories/branch.repository');
 var chainRepository = require('../repositories/chain.repository');
+var ingredientRepository = require('../repositories/ingredient.repository');
 var authMiddleware = require('../middlewares/auth.middleware');
+var xlsx = require('xlsx');
 
 async function getDashboard(query) {
   var dateRange = parseDateRange(query.startDate, query.endDate);
   var branchId = query.branchId || null;
-  var branchWhere = {};
   var invoiceWhere = {
     createdAt: {
       gte: dateRange.startDate,
@@ -14,31 +15,33 @@ async function getDashboard(query) {
     status: { in: ['paid', 'Paid', 'completed', 'Completed'] },
     order: {}
   };
-  var orderWhere = {
-    createdAt: {
-      gte: dateRange.startDate,
-      lte: dateRange.endDate
-    }
-  };
   var expenseWhere = {
     date: {
       gte: dateRange.startDate,
       lte: dateRange.endDate
     }
   };
+  var branchWhere = branchId ? { id: branchId } : {};
 
   if (branchId) {
     assertValidObjectId(branchId, 'branchId');
-    branchWhere.branchId = branchId;
     invoiceWhere.order.branchId = branchId;
-    orderWhere.branchId = branchId;
     expenseWhere.branchId = branchId;
   }
 
-  var invoices = await chainRepository.findInvoices(invoiceWhere);
+  var results = await Promise.all([
+    chainRepository.findInvoices(invoiceWhere),
+    chainRepository.sumExpenses(expenseWhere),
+    chainRepository.sumExpensesByBranch(expenseWhere),
+    ingredientRepository.countLowStockByBranch(branchId),
+    branchRepository.findAll({ where: branchWhere })
+  ]);
+  var invoices = results[0];
+  var expenseResult = results[1];
+  var expensesByBranch = results[2];
+  var lowStockCounts = results[3];
+  var branches = results[4];
   var totalOrders = invoices.length;
-  
-  var expenseResult = await chainRepository.sumExpenses(expenseWhere);
   var totalRevenue = sumInvoices(invoices);
   var totalExpenses = expenseResult._sum.amount || 0;
   var grossProfit = totalRevenue - totalExpenses;
@@ -55,7 +58,47 @@ async function getDashboard(query) {
       grossProfit: grossProfit
     },
     revenueSeries: buildRevenueSeries(invoices),
-    branchPerformance: buildBranchPerformance(invoices)
+    branchPerformance: buildBranchPerformance(invoices, expensesByBranch, branches),
+    lowStockAlerts: buildLowStockAlerts(lowStockCounts, branches)
+  };
+}
+
+async function exportDashboard(query) {
+  const dashboard = await getDashboard(query || {});
+
+  const kpis = dashboard?.kpis || {};
+  const overviewRows = [
+    { metric: 'Tổng doanh thu', value: kpis.totalRevenue || 0 },
+    { metric: 'Tổng đơn hàng', value: kpis.totalOrders || 0 },
+    { metric: 'Lợi nhuận gộp', value: kpis.grossProfit || 0 }
+  ];
+
+  const revenueRows = (dashboard?.revenueSeries || []).map(item => ({
+    date: item?.date || '',
+    revenue: item?.revenue || 0
+  }));
+
+  const branchRows = (dashboard?.branchPerformance || []).map(item => ({
+    branchName: item?.branchName || '',
+    revenue: item?.revenue || 0,
+    orders: item?.orders || 0,
+    grossProfit: item?.grossProfit || 0
+  }));
+
+  const workbook = xlsx.utils.book_new();
+  xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(overviewRows), 'Tổng quan');
+  xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(revenueRows), 'Doanh thu theo ngày');
+  xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(branchRows), 'Hiệu suất chi nhánh');
+
+  const rawStart = dashboard?.filters?.startDate ? String(dashboard.filters.startDate).substring(0, 10) : 'start';
+  const rawEnd = dashboard?.filters?.endDate ? String(dashboard.filters.endDate).substring(0, 10) : 'end';
+  
+  const cleanStart = rawStart.replace(/[^a-zA-Z0-9-]/g, '');
+  const cleanEnd = rawEnd.replace(/[^a-zA-Z0-9-]/g, '');
+
+  return {
+    buffer: xlsx.write(workbook, { bookType: 'xlsx', type: 'buffer' }),
+    fileName: `bao-cao-chuoi_${cleanStart}_${cleanEnd}.xlsx`
   };
 }
 
@@ -304,8 +347,10 @@ function buildRevenueSeries(invoices) {
   });
 }
 
-function buildBranchPerformance(invoices) {
+function buildBranchPerformance(invoices, expensesByBranch, branches) {
   var buckets = {};
+  var branchNames = buildBranchNameMap(branches);
+  var expenseMap = buildExpenseMap(expensesByBranch);
 
   invoices.forEach(function(invoice) {
     var branch = invoice.order && invoice.order.branch;
@@ -314,9 +359,10 @@ function buildBranchPerformance(invoices) {
     if (!buckets[branchId]) {
       buckets[branchId] = {
         branchId: branchId,
-        branchName: branch ? branch.name : 'Unknown branch',
+        branchName: branch ? branch.name : (branchNames[branchId] || 'Unknown branch'),
         revenue: 0,
-        orders: 0
+        orders: 0,
+        grossProfit: 0
       };
     }
 
@@ -324,11 +370,91 @@ function buildBranchPerformance(invoices) {
     buckets[branchId].orders += 1;
   });
 
+  Object.keys(expenseMap).forEach(function(branchId) {
+    if (!buckets[branchId]) {
+      buckets[branchId] = {
+        branchId: branchId,
+        branchName: branchNames[branchId] || 'Unknown branch',
+        revenue: 0,
+        orders: 0,
+        grossProfit: 0
+      };
+    }
+  });
+
   return Object.keys(buckets).map(function(branchId) {
+    buckets[branchId].grossProfit = buckets[branchId].revenue - (expenseMap[branchId] || 0);
     return buckets[branchId];
   }).sort(function(a, b) {
     return b.revenue - a.revenue;
   });
+}
+
+function buildLowStockAlerts(lowStockCounts, branches) {
+  var branchNames = buildBranchNameMap(branches);
+  var countMap = {};
+
+  lowStockCounts.forEach(function(item) {
+    countMap[normalizeRawObjectId(item._id)] = item.count || 0;
+  });
+
+  var alertBranchIds = Object.keys(countMap).filter(function(branchId) {
+    return countMap[branchId] > 0;
+  });
+
+  var result = alertBranchIds.map(function(branchId) {
+    return {
+      branchId: branchId,
+      branchName: branchNames[branchId] || 'Unknown branch',
+      count: countMap[branchId]
+    };
+  });
+
+  return result;
+}
+
+function buildBranchNameMap(branches) {
+  var branchNames = {};
+
+  branches.forEach(function(branch) {
+    branchNames[branch.id] = branch.name;
+  });
+
+  return branchNames;
+}
+
+function buildExpenseMap(expensesByBranch) {
+  var expenseMap = {};
+
+  expensesByBranch.forEach(function(item) {
+    expenseMap[item.branchId] = item._sum.amount || 0;
+  });
+
+  return expenseMap;
+}
+
+function normalizeRawObjectId(value) {
+  if (!value) {
+    return 'unknown';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (value.$oid) {
+    return value.$oid;
+  }
+
+  if (value.oid) {
+    return value.oid;
+  }
+
+  return String(value);
+}
+
+function dateToFilePart(value) {
+  return new Date(value).toISOString().slice(0, 10);
 }
 
 function sumInvoices(invoices) {
@@ -397,6 +523,7 @@ function parsePositiveInt(value, fallback) {
 
 module.exports = {
   getDashboard: getDashboard,
+  exportDashboard: exportDashboard,
   getConfig: getConfig,
   updateConfig: updateConfig,
   syncMenu: syncMenu,
