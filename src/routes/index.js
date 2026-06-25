@@ -23,6 +23,9 @@ var recipeRoutes = require("./recipe.routes");
 var ingredientRoutes = require("./ingredient.routes");
 var tableRoutes = require("./table.routes");
 var reservationRoutes = require("./reservation.routes");
+var preparationRoutes = require("./preparation.routes");
+var stockConversionRoutes = require("./stock-conversion.routes");
+var customerRoutes = require("./customer.routes");
 var adminRoutes = require("./admin.routes");
 var cashierShiftRoutes = require("./cashier-shift.routes");
 var paymentRoutes = require("./payment.routes");
@@ -56,6 +59,9 @@ router.use("/tables", tableRoutes);
 router.use("/reservations", reservationRoutes);
 router.use("/cashier-shifts", cashierShiftRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/preparations", preparationRoutes);
+router.use("/stock-conversions", stockConversionRoutes);
+router.use("/customers", customerRoutes);
 router.use("/admin", adminRoutes);
 router.use("/otp", otpRoutes);
 
@@ -81,6 +87,7 @@ resourcesConfig.getResources().forEach(function (resource) {
     "categories",
     "topping_groups",
     "ingredients",
+    "customers"
   ];
   if (excludedResources.includes(resource.name)) {
     return;

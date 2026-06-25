@@ -1,5 +1,7 @@
 var bcrypt = require('bcryptjs');
 var attendanceRepository = require('../repositories/attendance.repository');
+var branchRepository = require('../repositories/branch.repository');
+var rosterRepository = require('../repositories/roster.repository');
 var authMiddleware = require('../middlewares/auth.middleware');
 
 // ──────────────────────────────────────────────
@@ -9,7 +11,18 @@ var authMiddleware = require('../middlewares/auth.middleware');
 async function checkIn(payload) {
   if (!payload.pin) throwHttpError(400, 'PIN is required');
   if (!payload.branchId) throwHttpError(400, 'Branch ID is required');
+  if (payload.lat === undefined || payload.lng === undefined) {
+    throwHttpError(400, 'Không thể xác định vị trí của bạn. Vui lòng cấp quyền truy cập Vị trí trên trình duyệt.');
+  }
   assertValidObjectId(payload.branchId, 'branchId');
+
+  var branch = await branchRepository.findById(payload.branchId);
+  if (!branch) throwHttpError(400, 'Chi nhánh không tồn tại');
+
+  var distance = getDistanceFromLatLonInM(payload.lat, payload.lng, branch.lat, branch.lng);
+  if (distance > 200) {
+    throwHttpError(400, 'Bạn đang không ở quán (khoảng cách ' + Math.round(distance) + 'm). Không thể chấm công.');
+  }
 
   // Find employee by PIN + branch (BR-HR30)
   var employee = await findEmployeeByPinAndBranch(payload.pin, payload.branchId);
@@ -24,9 +37,38 @@ async function checkIn(payload) {
     throwHttpError(400, 'You are already checked in. Please check out before starting a new session.');
   }
 
-  // BR-HR29: Server-side timestamping
+  // Roster-based constraint (+/- 15 mins)
   var now = new Date();
+  var todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  var rosters = await rosterRepository.findExistingRosters(employee.id, todayUTC);
+  
+  if (!rosters || rosters.length === 0) {
+    throwHttpError(400, 'Bạn không có ca làm việc được xếp trong hôm nay. Không thể chấm công.');
+  }
 
+  var currentMinutes = now.getHours() * 60 + now.getMinutes();
+  var isValidTime = false;
+
+  for (var i = 0; i < rosters.length; i++) {
+    var shift = rosters[i].shift;
+    if (!shift) continue;
+    var shiftMinutes = shift.startTime.getUTCHours() * 60 + shift.startTime.getUTCMinutes();
+    
+    var diff = currentMinutes - shiftMinutes;
+    if (diff < -720) diff += 1440;
+    if (diff > 720) diff -= 1440;
+
+    if (diff >= -15 && diff <= 15) {
+      isValidTime = true;
+      break;
+    }
+  }
+
+  if (!isValidTime) {
+    throwHttpError(400, 'Bạn chỉ được phép chấm công trong khoảng thời gian +/- 15 phút so với giờ vào ca của lịch làm việc hôm nay.');
+  }
+
+  // BR-HR29: Server-side timestamping
   var timesheet = await attendanceRepository.createTimesheet({
     employeeId: employee.id,
     date: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
@@ -45,7 +87,18 @@ async function checkIn(payload) {
 async function checkOut(payload) {
   if (!payload.pin) throwHttpError(400, 'PIN is required');
   if (!payload.branchId) throwHttpError(400, 'Branch ID is required');
+  if (payload.lat === undefined || payload.lng === undefined) {
+    throwHttpError(400, 'Không thể xác định vị trí của bạn. Vui lòng cấp quyền truy cập Vị trí trên trình duyệt.');
+  }
   assertValidObjectId(payload.branchId, 'branchId');
+
+  var branch = await branchRepository.findById(payload.branchId);
+  if (!branch) throwHttpError(400, 'Chi nhánh không tồn tại');
+
+  var distance = getDistanceFromLatLonInM(payload.lat, payload.lng, branch.lat, branch.lng);
+  if (distance > 200) {
+    throwHttpError(400, 'Bạn đang không ở quán (khoảng cách ' + Math.round(distance) + 'm). Không thể chấm công.');
+  }
 
   // Find employee by PIN + branch (BR-HR30)
   var employee = await findEmployeeByPinAndBranch(payload.pin, payload.branchId);
@@ -110,6 +163,23 @@ function getTodayRange() {
   var start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
   var end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   return { start: start, end: end };
+}
+
+function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
+  var R = 6371; // Radius of the earth in km
+  var dLat = deg2rad(lat2 - lat1);
+  var dLon = deg2rad(lon2 - lon1);
+  var a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  var d = R * c;
+  return d * 1000;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI / 180);
 }
 
 function throwHttpError(statusCode, message) {
