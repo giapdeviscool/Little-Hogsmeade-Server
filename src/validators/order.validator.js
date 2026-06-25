@@ -83,13 +83,7 @@ var createOrderSchema = {
     },
     message: 'status must be a string'
   },
-  paymentMethod: {
-    required: true,
-    validate: function(value) {
-      return typeof value === 'string' && value.trim() !== '';
-    },
-    message: 'paymentMethod is required'
-  },
+
   discountAmount: {
     required: false,
     validate: function(value) {
@@ -141,9 +135,37 @@ var changeTableSchema = {
   }
 };
 
+var cashSettlementSchema = {
+  invoice_id: {
+    required: true,
+    validate: isValidObjectId,
+    message: 'invoice_id must be a valid object id'
+  },
+  cash_received: {
+    required: true,
+    validate: isPositiveNumber,
+    message: 'cash_received must be a positive number'
+  }
+};
+
+var qrIntentSchema = {
+  invoice_id: {
+    required: true,
+    validate: isValidObjectId,
+    message: 'invoice_id must be a valid object id'
+  },
+  amount: {
+    required: true,
+    validate: isPositiveNumber,
+    message: 'amount must be a positive number'
+  }
+};
+
 module.exports = {
   createOrderSchema: createOrderSchema,
   addOrderItemsSchema: addOrderItemsSchema,
   updateOrderStatusSchema: updateOrderStatusSchema,
-  changeTableSchema: changeTableSchema
+  changeTableSchema: changeTableSchema,
+  cashSettlementSchema: cashSettlementSchema,
+  qrIntentSchema: qrIntentSchema
 };

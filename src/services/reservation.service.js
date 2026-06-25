@@ -2,6 +2,7 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var prisma = require('../lib/prisma');
 var reservationRepository = require('../repositories/reservation.repository');
 var socket = require('../realtime/socket');
+const orderRepository = require('../repositories/order.repository');
 
 var ACTIVE_RESERVATION_STATUSES = ['pending', 'confirmed', 'reserved'];
 
@@ -16,10 +17,18 @@ async function checkInReservation(reservationId, payload, currentUser) {
   var guestCount = payload.actual_guest_count === undefined
     ? reservation.guestCount
     : payload.actual_guest_count;
-  var result = await prisma.$transaction(async function(tx) {
+  // console.log("reservation : ", reservation)
+
+
+  var result = await prisma.$transaction(async function (tx) {
+    var customer = await findOrCreateReservationCustomer(tx, reservation.guestPhone, reservation.guestName);
+
     var updatedReservation = await tx.reservation.update({
       where: { id: reservation.id },
-      data: { status: 'checked_in' }
+      data: {
+        customerId: customer.id,
+        status: 'checked_in'
+      }
     });
     var updatedTable = await tx.table.update({
       where: { id: reservation.tableId },
@@ -48,7 +57,7 @@ async function markReservationNoShow(reservationId, currentUser) {
   var reservation = await getAuthorizedReservation(reservationId, currentUser);
   assertActiveReservation(reservation);
 
-  var result = await prisma.$transaction(async function(tx) {
+  var result = await prisma.$transaction(async function (tx) {
     var updatedReservation = await tx.reservation.update({
       where: { id: reservation.id },
       data: { status: 'no_show' }
@@ -114,6 +123,30 @@ function assertEmployeeAccess(currentUser, branchId) {
   if (!authMiddleware.isOwner(currentUser) && currentUser.branchId !== branchId) {
     throwHttpError(403, 'You can only manage reservations for your own branch');
   }
+}
+
+async function findOrCreateReservationCustomer(tx, phone, fullName) {
+  var normalizedPhone = normalizeRequiredString(phone, 'guestPhone');
+  var normalizedName = normalizeRequiredString(fullName, 'guestName');
+
+  var customer = await orderRepository.findCusomterByPhone(normalizedPhone, tx);
+  if (customer) {
+    return customer;
+  }
+
+  return orderRepository.createCustomer({
+    phone: normalizedPhone,
+    fullName: normalizedName,
+    source: 'online-reservation'
+  }, tx);
+}
+
+function normalizeRequiredString(value, fieldName) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throwHttpError(400, fieldName + ' is required');
+  }
+
+  return value.trim();
 }
 
 function assertValidObjectId(value, fieldName) {

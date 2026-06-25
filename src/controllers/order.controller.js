@@ -7,7 +7,7 @@ async function createOrder(req, res, next) {
       req.user && req.user.id,
       req.body,
     );
-    res.status(201).json({ data: result });
+    res.status(201).json(result);
   } catch (error) {
     next(error);
   }

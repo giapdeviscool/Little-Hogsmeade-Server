@@ -68,6 +68,26 @@ function isChainAdmin(user) {
   return roleName.indexOf('chain admin') > -1 || roleName.indexOf('admin') > -1 || roleName.indexOf('manager') > -1;
 }
 
+function verifyRole(allowedRoles) {
+  return function(req, res, next) {
+    if (!req.user || req.user.type !== 'employee') {
+      return res.status(403).json({ message: 'Owner or Chain Admin role is required' });
+    }
+
+    var userRole = normalizeRoleName(req.user.roleName);
+    var isAllowed = allowedRoles.some(function(role) {
+      var normalizedAllowed = role.toLowerCase().replace('_', ' ');
+      return userRole.indexOf(normalizedAllowed) > -1 || userRole === normalizedAllowed;
+    });
+
+    if (!isAllowed) {
+      return res.status(403).json({ message: 'Owner or Chain Admin role is required' });
+    }
+
+    next();
+  };
+}
+
 function normalizeRoleName(roleName) {
   return String(roleName || '').trim().toLowerCase();
 }
@@ -77,5 +97,6 @@ module.exports = {
   requireChainRole: requireChainRole,
   requireOwner: requireOwner,
   isOwner: isOwner,
-  isChainAdmin: isChainAdmin
+  isChainAdmin: isChainAdmin,
+  verifyRole: verifyRole
 };

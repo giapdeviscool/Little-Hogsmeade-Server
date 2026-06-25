@@ -15,6 +15,7 @@ var postRoutes = require("./post.routes");
 var eventRoutes = require("./event.routes");
 var uploadRoutes = require("./upload.routes");
 var orderRoutes = require("./order.routes");
+var invoiceRoutes = require("./invoice.routes");
 var menuItemRoutes = require("./menu-item.routes");
 var categoryRoutes = require("./category.routes");
 var toppingGroupRoutes = require("./topping-group.routes");
@@ -26,6 +27,14 @@ var preparationRoutes = require("./preparation.routes");
 var stockConversionRoutes = require("./stock-conversion.routes");
 var customerRoutes = require("./customer.routes");
 var adminRoutes = require("./admin.routes");
+var deliveryRoutes = require("./delivery.routes");
+var deliveryController = require("../controllers/delivery.controller");
+var authMiddleware = require("../middlewares/auth.middleware");
+var preparationRoutes = require("./preparation.routes");
+var stockConversionRoutes = require("./stock-conversion.routes");
+var cashierShiftRoutes = require("./cashier-shift.routes");
+var paymentRoutes = require("./payment.routes");
+var otpRoutes = require("./otp.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 var router = express.Router();
@@ -45,6 +54,7 @@ router.use("/posts", postRoutes);
 router.use("/events", eventRoutes);
 router.use("/uploads", uploadRoutes);
 router.use("/orders", orderRoutes);
+router.use("/invoices", invoiceRoutes);
 router.use("/menu-items", menuItemRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/topping-groups", toppingGroupRoutes);
@@ -52,10 +62,17 @@ router.use("/recipes", recipeRoutes);
 router.use("/ingredients", ingredientRoutes);
 router.use("/tables", tableRoutes);
 router.use("/reservations", reservationRoutes);
+router.use("/cashier-shifts", cashierShiftRoutes);
+router.use("/payments", paymentRoutes);
 router.use("/preparations", preparationRoutes);
 router.use("/stock-conversions", stockConversionRoutes);
 router.use("/customers", customerRoutes);
 router.use("/admin", adminRoutes);
+router.use("/delivery/orders", deliveryRoutes);
+router.post("/pos/orders/delivery", authMiddleware.authenticate, deliveryController.createDeliveryOrder);
+router.use("/preparations", preparationRoutes);
+router.use("/stock-conversions", stockConversionRoutes);
+router.use("/otp", otpRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({
@@ -70,17 +87,18 @@ router.get("/resources", function (req, res) {
 });
 
 resourcesConfig.getResources().forEach(function (resource) {
-  if (
-    resource.name === "pages" ||
-    resource.name === "banners" ||
-    resource.name === "posts" ||
-    resource.name === "events" ||
-    resource.name === "menu_items" ||
-    resource.name === "categories" ||
-    resource.name === "topping_groups" ||
-    resource.name === "ingredients" ||
-    resource.name === "customers"
-  ) {
+  var excludedResources = [
+    "pages",
+    "banners",
+    "posts",
+    "events",
+    "menu_items",
+    "categories",
+    "topping_groups",
+    "ingredients",
+    "customers"
+  ];
+  if (excludedResources.includes(resource.name)) {
     return;
   }
 
