@@ -94,9 +94,8 @@ async function requestClosure(req, res, next) {
       return res.status(400).json({ error: "Please complete or void all pending orders before closing the shift." });
     }
 
-    // Aggregate transaction matrix
-    var aggregation = await orderRepository.calculateCashRevenueForShift(shiftId);
-    var expectedCash = shift.startingFloat + aggregation.cashSales - aggregation.cashRefunds;
+    // Use live ledger value tracked during the shift
+    var expectedCash = shift.expectedCashSystem !== null ? shift.expectedCashSystem : shift.startingFloat;
     var discrepancy = actualCashCounted - expectedCash;
 
     // Cache computed parameters
@@ -134,40 +133,28 @@ async function finalizeClosure(req, res, next) {
       return res.status(400).json({ error: 'TOTP code is required' });
     }
 
-    // Cryptographic verification loop
+    // Verify with employee PIN instead of TOTP
     const admin = await prisma.employee.findUnique({
-      where: { id: req.user.id }
+      where: { id: req.user.id },
+      select: { pinCode: true }
     });
 
-    const secret = (admin && admin.totpSecret) || process.env.ADMIN_TOTP_SECRET;
-    if (!secret) {
-      return res.status(400).json({ error: 'No Admin TOTP secret configured' });
+    if (!admin) {
+      return res.status(404).json({ error: 'Employee not found' });
     }
 
-    const verification = verifySync({ token: code, secret: secret });
-    const isValid = verification && verification.valid;
-    if (!isValid) {
-      return res.status(400).json({ error: "Invalid or expired Admin OTP token." });
+    if (!code || code !== admin.pinCode) {
+      return res.status(400).json({ error: 'Invalid PIN code.' });
     }
 
-    // Retrieve cached calculations or fall back to computing them
+    // Always use live ledger value from the shift record (most accurate)
     global.pendingClosures = global.pendingClosures || new Map();
-    var cached = global.pendingClosures.get(shiftId) || {};
-    var expectedCash = cached.expectedCashSystem;
-    var discrepancy = cached.discrepancyAmount;
-
-    // If cache missed, run calculations
-    if (expectedCash === undefined) {
-      const shift = await prisma.cashierShift.findUnique({
-        where: { id: shiftId }
-      });
-      if (!shift) {
-        return res.status(404).json({ error: 'Shift not found' });
-      }
-      var aggregation = await orderRepository.calculateCashRevenueForShift(shiftId);
-      expectedCash = shift.startingFloat + aggregation.cashSales - aggregation.cashRefunds;
-      discrepancy = actualCashCounted - expectedCash;
+    var freshShift = await prisma.cashierShift.findUnique({ where: { id: shiftId } });
+    if (!freshShift) {
+      return res.status(404).json({ error: 'Shift not found' });
     }
+    var expectedCash = freshShift.expectedCashSystem !== null ? freshShift.expectedCashSystem : freshShift.startingFloat;
+    var discrepancy = actualCashCounted - expectedCash;
 
     // Atomic transaction settlement
     const updatedShift = await prisma.$transaction(async function(tx) {
@@ -276,7 +263,7 @@ async function getReconciliation(req, res, next) {
       return res.status(404).json({ error: 'Cashier shift not found' });
     }
 
-    var aggregation = await orderRepository.calculateCashRevenueForShift(shiftId);
+    var aggregation = await orderRepository.calculateCashRevenueForShift(shift.branchId);
 
     const totalInvoices = await prisma.invoice.count({
       where: {
@@ -295,7 +282,7 @@ async function getReconciliation(req, res, next) {
       }
     });
 
-    const expectedCashSystem = shift.startingFloat + aggregation.cashSales - aggregation.cashRefunds;
+    const expectedCashSystem = shift.expectedCashSystem !== null ? shift.expectedCashSystem : (shift.startingFloat + aggregation.cashSales - aggregation.cashRefunds);
 
     return res.status(200).json({
       success: true,

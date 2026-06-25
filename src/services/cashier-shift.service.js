@@ -98,17 +98,19 @@ async function closeShift(shiftId, branchId, payload, currentUser) {
     throwHttpError(400, 'Shift is not open');
   }
 
-  const { verifySync } = require('otplib');
-  const code = payload.code || payload.otp;
+  const code = payload.code || payload.otp || payload.pin;
 
   if (!code || typeof code !== 'string') {
-    throwHttpError(400, 'TOTP code is required');
+    throwHttpError(400, 'PIN code is required');
   }
 
-  const verification = verifySync({ token: code, secret: process.env.ADMIN_TOTP_SECRET });
-  const isValid = verification && verification.valid;
-  if (!isValid) {
-    throwHttpError(401, 'Invalid or expired Admin OTP token.');
+  // Verify against the employee's own PIN code
+  var employee = await prisma.employee.findUnique({
+    where: { id: currentUser.id },
+    select: { pinCode: true }
+  });
+  if (!employee || code !== employee.pinCode) {
+    throwHttpError(401, 'Invalid PIN code.');
   }
 
   var actualCashCounted = parseFloat(payload.actual_cash_counted);
