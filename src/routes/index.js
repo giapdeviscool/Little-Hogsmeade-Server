@@ -27,6 +27,8 @@ var adminRoutes = require("./admin.routes");
 var deliveryRoutes = require("./delivery.routes");
 var deliveryController = require("../controllers/delivery.controller");
 var authMiddleware = require("../middlewares/auth.middleware");
+var preparationRoutes = require("./preparation.routes");
+var stockConversionRoutes = require("./stock-conversion.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 var router = express.Router();
@@ -57,6 +59,8 @@ router.use("/customers", customerRoutes);
 router.use("/admin", adminRoutes);
 router.use("/delivery/orders", deliveryRoutes);
 router.post("/pos/orders/delivery", authMiddleware.authenticate, deliveryController.createDeliveryOrder);
+router.use("/preparations", preparationRoutes);
+router.use("/stock-conversions", stockConversionRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({

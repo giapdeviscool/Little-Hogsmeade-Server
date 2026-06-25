@@ -102,6 +102,13 @@ async function createEmployee(payload, currentUser) {
     await assertUniqueEmail(data.email);
   }
 
+  // Prevent privilege escalation: Chain Admin cannot create Owner/Admin/Manager etc.
+  var targetRole = await employeeRepository.findRoleById(data.roleId);
+  if (!targetRole) {
+    throwHttpError(400, 'The provided role does not exist');
+  }
+  assertPrivilegeEscalation(currentUser, targetRole);
+
   // BR-HR10: Generate secure 6-digit PIN
   var rawPin = generatePinCode();
   var hashedPin = await bcrypt.hash(rawPin, SALT_ROUNDS);

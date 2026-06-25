@@ -262,6 +262,7 @@ model Ingredient {
   importUnit    String? @map("import_unit")
   conversionRate Float? @default(1.0) @map("conversion_rate")
   category      String?
+  ingredientType String @default("raw") @map("ingredient_type") // "raw" | "preparation"
   minStockLevel Float   @default(0.00) @map("min_stock_level")
   currentStock  Float   @default(0.00) @map("current_stock")
   isActive      Boolean @default(true) @map("is_active")
@@ -271,8 +272,25 @@ model Ingredient {
   recipes            Recipe[]            @relation("Recipe_ingredientId_to_Ingredient")
   stockTransactions  StockTransaction[]  @relation("StockTransaction_ingredientId_to_Ingredient")
   purchaseOrderItems PurchaseOrderItem[] @relation("PurchaseOrderItem_ingredientId_to_Ingredient")
+  
+  preparationIngredients PreparationRecipe[] @relation("PreparationRecipe_preparationId")
+  usedInPreparations     PreparationRecipe[] @relation("PreparationRecipe_rawIngredientId")
 
   @@map("ingredients")
+}
+
+model PreparationRecipe {
+  id               String  @id @default(auto()) @map("_id") @db.ObjectId
+  preparationId    String  @map("preparation_id") @db.ObjectId    // ID bán thành phẩm (output)
+  rawIngredientId  String  @map("raw_ingredient_id") @db.ObjectId // ID nguyên liệu thô (input)
+  quantityRequired Float   @map("quantity_required")               // Lượng NL thô cần dùng
+  yieldQuantity    Float   @map("yield_quantity")                   // Lượng bán TP tạo ra từ công thức này
+  instructions     String?                                         // Hướng dẫn chế biến (tuỳ chọn)
+
+  preparation   Ingredient @relation("PreparationRecipe_preparationId", fields: [preparationId], references: [id])
+  rawIngredient Ingredient @relation("PreparationRecipe_rawIngredientId", fields: [rawIngredientId], references: [id])
+
+  @@map("preparation_recipes")
 }
 
 model Recipe {

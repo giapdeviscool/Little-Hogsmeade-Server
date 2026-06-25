@@ -193,7 +193,7 @@ function sanitizeAccount(accountType, account) {
 function hashPassword(password) {
   var salt = crypto.randomBytes(16).toString('hex');
   var hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  log('Password hashed:', { salt: salt, hash: hash }); // Debug log
+  console.log('Password hashed:', { salt: salt, hash: hash }); // Debug log
   return salt + ':' + hash;
 }
 
