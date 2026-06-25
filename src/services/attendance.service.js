@@ -10,22 +10,20 @@ var authMiddleware = require('../middlewares/auth.middleware');
 
 async function checkIn(payload) {
   if (!payload.pin) throwHttpError(400, 'PIN is required');
-  if (!payload.branchId) throwHttpError(400, 'Branch ID is required');
   if (payload.lat === undefined || payload.lng === undefined) {
     throwHttpError(400, 'Không thể xác định vị trí của bạn. Vui lòng cấp quyền truy cập Vị trí trên trình duyệt.');
   }
-  assertValidObjectId(payload.branchId, 'branchId');
 
-  var branch = await branchRepository.findById(payload.branchId);
+  // Find employee globally by PIN
+  var employee = await findEmployeeByPinGlobal(payload.pin);
+
+  var branch = await branchRepository.findById(employee.branchId);
   if (!branch) throwHttpError(400, 'Chi nhánh không tồn tại');
 
   var distance = getDistanceFromLatLonInM(payload.lat, payload.lng, branch.lat, branch.lng);
   if (distance > 200) {
     throwHttpError(400, 'Bạn đang không ở quán (khoảng cách ' + Math.round(distance) + 'm). Không thể chấm công.');
   }
-
-  // Find employee by PIN + branch (BR-HR30)
-  var employee = await findEmployeeByPinAndBranch(payload.pin, payload.branchId);
 
   // BR-HR31: Check for existing open session
   var todayRange = getTodayRange();
@@ -47,7 +45,7 @@ async function checkIn(payload) {
   }
 
   var currentMinutes = now.getHours() * 60 + now.getMinutes();
-  var isValidTime = false;
+  var matchedShift = null;
 
   for (var i = 0; i < rosters.length; i++) {
     var shift = rosters[i].shift;
@@ -59,18 +57,27 @@ async function checkIn(payload) {
     if (diff > 720) diff -= 1440;
 
     if (diff >= -15 && diff <= 15) {
-      isValidTime = true;
+      matchedShift = shift;
       break;
     }
   }
 
-  if (!isValidTime) {
+  if (!matchedShift) {
     throwHttpError(400, 'Bạn chỉ được phép chấm công trong khoảng thời gian +/- 15 phút so với giờ vào ca của lịch làm việc hôm nay.');
+  }
+
+  // Prevent multiple check-ins for the same shift
+  var existingTimesheet = await attendanceRepository.findTimesheetByShift(
+    employee.id, matchedShift.id, todayRange.start, todayRange.end
+  );
+  if (existingTimesheet) {
+    throwHttpError(400, 'Bạn đã chấm công cho ca làm việc này rồi.');
   }
 
   // BR-HR29: Server-side timestamping
   var timesheet = await attendanceRepository.createTimesheet({
     employeeId: employee.id,
+    shiftId: matchedShift.id,
     date: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
     checkIn: now,
     note: null
@@ -86,22 +93,20 @@ async function checkIn(payload) {
 
 async function checkOut(payload) {
   if (!payload.pin) throwHttpError(400, 'PIN is required');
-  if (!payload.branchId) throwHttpError(400, 'Branch ID is required');
   if (payload.lat === undefined || payload.lng === undefined) {
     throwHttpError(400, 'Không thể xác định vị trí của bạn. Vui lòng cấp quyền truy cập Vị trí trên trình duyệt.');
   }
-  assertValidObjectId(payload.branchId, 'branchId');
 
-  var branch = await branchRepository.findById(payload.branchId);
+  // Find employee globally by PIN
+  var employee = await findEmployeeByPinGlobal(payload.pin);
+
+  var branch = await branchRepository.findById(employee.branchId);
   if (!branch) throwHttpError(400, 'Chi nhánh không tồn tại');
 
   var distance = getDistanceFromLatLonInM(payload.lat, payload.lng, branch.lat, branch.lng);
   if (distance > 200) {
     throwHttpError(400, 'Bạn đang không ở quán (khoảng cách ' + Math.round(distance) + 'm). Không thể chấm công.');
   }
-
-  // Find employee by PIN + branch (BR-HR30)
-  var employee = await findEmployeeByPinAndBranch(payload.pin, payload.branchId);
 
   // BR-HR31: Must have an open session to check out
   var todayRange = getTodayRange();
@@ -145,17 +150,25 @@ async function getTodayAttendance(query, currentUser) {
 // Helpers
 // ──────────────────────────────────────────────
 
-async function findEmployeeByPinAndBranch(rawPin, branchId) {
-  var employees = await attendanceRepository.findEmployeeByPin(branchId);
+async function findEmployeeByPinGlobal(rawPin) {
+  var employees = await attendanceRepository.findEmployeeByPin();
+  var matchedEmployees = [];
 
   for (var i = 0; i < employees.length; i++) {
     var match = await bcrypt.compare(rawPin, employees[i].pinCode);
     if (match) {
-      return employees[i];
+      matchedEmployees.push(employees[i]);
     }
   }
 
-  throwHttpError(401, 'Invalid PIN or employee not found at this branch');
+  if (matchedEmployees.length === 0) {
+    throwHttpError(401, 'Mã PIN không đúng.');
+  }
+  if (matchedEmployees.length > 1) {
+    throwHttpError(400, 'Mã PIN đang trùng lặp giữa nhiều nhân viên. Vui lòng báo cho quản lý để đổi mã PIN.');
+  }
+
+  return matchedEmployees[0];
 }
 
 function getTodayRange() {
