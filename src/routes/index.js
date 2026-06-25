@@ -27,6 +27,11 @@ var preparationRoutes = require("./preparation.routes");
 var stockConversionRoutes = require("./stock-conversion.routes");
 var customerRoutes = require("./customer.routes");
 var adminRoutes = require("./admin.routes");
+var deliveryRoutes = require("./delivery.routes");
+var deliveryController = require("../controllers/delivery.controller");
+var authMiddleware = require("../middlewares/auth.middleware");
+var preparationRoutes = require("./preparation.routes");
+var stockConversionRoutes = require("./stock-conversion.routes");
 var cashierShiftRoutes = require("./cashier-shift.routes");
 var paymentRoutes = require("./payment.routes");
 var otpRoutes = require("./otp.routes");
@@ -63,6 +68,10 @@ router.use("/preparations", preparationRoutes);
 router.use("/stock-conversions", stockConversionRoutes);
 router.use("/customers", customerRoutes);
 router.use("/admin", adminRoutes);
+router.use("/delivery/orders", deliveryRoutes);
+router.post("/pos/orders/delivery", authMiddleware.authenticate, deliveryController.createDeliveryOrder);
+router.use("/preparations", preparationRoutes);
+router.use("/stock-conversions", stockConversionRoutes);
 router.use("/otp", otpRoutes);
 
 router.get("/resources", function (req, res) {

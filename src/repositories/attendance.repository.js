@@ -1,13 +1,15 @@
 var prisma = require('../lib/prisma');
 
 function findEmployeeByPin(branchId) {
-  // Return all employees from the branch so we can bcrypt.compare each PIN
+  var where = {
+    status: 'active',
+    pinCode: { not: '' }
+  };
+  if (branchId) {
+    where.branchId = branchId;
+  }
   return prisma.employee.findMany({
-    where: {
-      branchId: branchId,
-      status: 'active',
-      pinCode: { not: null }
-    },
+    where: where,
     select: {
       id: true,
       fullName: true,
@@ -27,8 +29,21 @@ function findOpenSession(employeeId, todayStart, todayEnd) {
         gte: todayStart,
         lte: todayEnd
       },
-      checkIn: { not: null },
-      checkOut: null
+      checkIn: { isSet: true },
+      checkOut: { isSet: false }
+    }
+  });
+}
+
+function findTimesheetByShift(employeeId, shiftId, todayStart, todayEnd) {
+  return prisma.timesheet.findFirst({
+    where: {
+      employeeId: employeeId,
+      shiftId: shiftId,
+      date: {
+        gte: todayStart,
+        lte: todayEnd
+      }
     }
   });
 }
@@ -79,5 +94,6 @@ module.exports = {
   findOpenSession: findOpenSession,
   createTimesheet: createTimesheet,
   updateTimesheet: updateTimesheet,
-  findTodayAttendance: findTodayAttendance
+  findTodayAttendance: findTodayAttendance,
+  findTimesheetByShift: findTimesheetByShift
 };

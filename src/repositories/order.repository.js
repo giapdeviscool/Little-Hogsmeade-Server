@@ -272,6 +272,18 @@ async function calculateCashRevenueForShift(shiftId, tx) {
   };
 }
 
+function findCusomterByPhone(phone, tx) {
+  return getDb(tx).customer.findUnique({
+    where: { phone: phone }
+  });
+}
+
+function createCustomer(data, tx) {
+  return getDb(tx).customer.create({
+    data: data
+  });
+}
+
 module.exports = {
   createOrder: createOrder,
   createOrderItem: createOrderItem,
@@ -297,5 +309,7 @@ module.exports = {
   deletePaymentsByInvoiceId: deletePaymentsByInvoiceId,
   deleteInvoiceByOrderId: deleteInvoiceByOrderId,
   deleteOrderById: deleteOrderById,
+  findCusomterByPhone: findCusomterByPhone,
+  createCustomer: createCustomer,
   calculateCashRevenueForShift: calculateCashRevenueForShift
 };
