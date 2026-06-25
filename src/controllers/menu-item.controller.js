@@ -54,8 +54,39 @@ async function updateStatus(req, res, next) {
   }
 }
 
+async function updateMenuItem(req, res, next) {
+  try {
+    var id = req.params.id;
+    var fileUrl = null;
+    if (req.file) {
+      if (!cloudinaryUpload.isCloudinaryConfigured()) {
+        var errConfig = new Error("Cloudinary environment variables are missing");
+        errConfig.status = 500;
+        throw errConfig;
+      }
+      var resultObj = await cloudinaryUpload.uploadBufferToCloudinary(
+        req.file.buffer,
+        {
+          folder: "little-hogsmeade/menu-items",
+          resource_type: "image",
+        }
+      );
+      fileUrl = resultObj.secure_url;
+    }
+
+    var result = await menuItemService.updateMenuItem(id, req.body, req.user, fileUrl);
+    res.json({ message: 'Menu item updated successfully', data: result });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
+    }
+    next(error);
+  }
+}
+
 module.exports = {
   getMenuItems: getMenuItems,
   createMenuItem: createMenuItem,
-  updateStatus: updateStatus
+  updateStatus: updateStatus,
+  updateMenuItem: updateMenuItem
 };
