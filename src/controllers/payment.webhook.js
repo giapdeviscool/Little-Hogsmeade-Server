@@ -92,9 +92,16 @@ async function handleSePayWebhook(req, res, next) {
           });
 
           if (!membership) {
+            var defaultTier = await tx.membershipTier.findFirst({
+              where: { minPoints: 0 }
+            });
+            if (!defaultTier) {
+              throw new Error('Default membership tier (minPoints: 0) not found in system');
+            }
             membership = await tx.customerMembership.create({
               data: {
                 customerId: order.customerId,
+                tierId: defaultTier.id,
                 totalPoints: 0,
                 totalSpent: 0
               }

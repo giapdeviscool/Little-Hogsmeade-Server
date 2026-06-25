@@ -13,6 +13,46 @@ function normalizeListOptions(query) {
     options.skip = skip;
   }
 
+  // Handle sorting
+  var sortKey = query._sort || query.sort_by;
+  var sortOrder = query._order || query.sort_order;
+  if (sortKey) {
+    var order = sortOrder && sortOrder.toLowerCase() === 'desc' ? 'desc' : 'asc';
+    options.orderBy = {};
+    options.orderBy[sortKey] = order;
+  }
+
+  // Handle filtering for query parameters
+  var where = {};
+  var ignoredKeys = ['limit', 'skip', 'page', 'sort_by', 'sort_order', '_sort', '_order', '_expand', '_embed'];
+  for (var key in query) {
+    if (ignoredKeys.includes(key)) {
+      continue;
+    }
+    var val = query[key];
+    if (val !== undefined && val !== null && val !== '') {
+      if (val === 'true') {
+        where[key] = true;
+      } else if (val === 'false') {
+        where[key] = false;
+      } else {
+        where[key] = val;
+      }
+    }
+  }
+  if (Object.keys(where).length > 0) {
+    options.where = where;
+  }
+
+  // Handle dynamic relations (_expand)
+  if (query._expand) {
+    options.include = {};
+    var relations = Array.isArray(query._expand) ? query._expand : [query._expand];
+    relations.forEach(function(rel) {
+      options.include[rel] = true;
+    });
+  }
+
   return options;
 }
 

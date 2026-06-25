@@ -1,5 +1,5 @@
 var prisma = require('../lib/prisma');
-var { authenticator } = require('otplib');
+var { generateSecret, generateURI, verifySync } = require('otplib');
 var QRCode = require('qrcode');
 
 function throwHttpError(statusCode, message) {
@@ -19,14 +19,14 @@ async function setup2FA(userId) {
 
   var secret = employee.totpSecret;
   if (!secret) {
-    secret = authenticator.generateSecret();
+    secret = generateSecret();
     await prisma.employee.update({
       where: { id: employee.id },
       data: { totpSecret: secret }
     });
   }
 
-  const otpauth = authenticator.keyuri('ChainAdmin', 'Little Hogsmeade', secret);
+  const otpauth = generateURI({ secret: secret, label: 'ChainAdmin', issuer: 'Little Hogsmeade' });
   const qrCode = await QRCode.toDataURL(otpauth);
 
   return { qrCode: qrCode, secret: secret };
@@ -42,7 +42,8 @@ async function verify2FA(userId, code) {
     throwHttpError(400, 'No Admin TOTP secret configured');
   }
 
-  const isValid = authenticator.check(code, secret);
+  const verification = verifySync({ token: code, secret: secret });
+  const isValid = verification && verification.valid;
   if (!isValid) {
     throwHttpError(400, 'Invalid or expired Admin OTP token.');
   }

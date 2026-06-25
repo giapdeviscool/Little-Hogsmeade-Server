@@ -170,8 +170,15 @@ async function processLoyaltyPoints(tx, order, invoice) {
 
     var membership = await paymentRepository.findCustomerMembershipByCustomerId(order.customerId, tx);
     if (!membership) {
+      var defaultTier = await tx.membershipTier.findFirst({
+        where: { minPoints: 0 }
+      });
+      if (!defaultTier) {
+        throwHttpError(500, 'Default membership tier (minPoints: 0) not found in system');
+      }
       membership = await paymentRepository.createCustomerMembership({
         customerId: order.customerId,
+        tierId: defaultTier.id,
         totalPoints: 0,
         totalSpent: 0
       }, tx);

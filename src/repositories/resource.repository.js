@@ -15,7 +15,7 @@ function getDelegate(resource) {
 function findMany(resource, options) {
   var opt = options || {};
   if (resource.name === 'delivery_orders') {
-    opt.include = {
+    opt.include = Object.assign({}, opt.include, {
       order: {
         include: {
           invoices: true,
@@ -27,12 +27,12 @@ function findMany(resource, options) {
         }
       },
       deliveryEmployee: true
-    };
+    });
   } else if (resource.name === 'employees') {
-    opt.include = {
+    opt.include = Object.assign({}, opt.include, {
       role: true,
       branch: true
-    };
+    });
   }
   return getDelegate(resource).findMany(opt);
 }

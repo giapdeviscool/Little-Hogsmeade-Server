@@ -285,8 +285,15 @@ async function updateOrderStatus(id, status) {
               var membership = await orderRepository.findCustomerMembershipByCustomerId(order.customerId, tx);
 
               if (!membership) {
+                var defaultTier = await tx.membershipTier.findFirst({
+                  where: { minPoints: 0 }
+                });
+                if (!defaultTier) {
+                  throwHttpError(500, 'Default membership tier (minPoints: 0) not found in system');
+                }
                 membership = await orderRepository.createCustomerMembership({
                   customerId: order.customerId,
+                  tierId: defaultTier.id,
                   totalPoints: 0,
                   totalSpent: 0
                 }, tx);
