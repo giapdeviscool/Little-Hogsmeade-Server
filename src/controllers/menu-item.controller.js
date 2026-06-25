@@ -84,9 +84,25 @@ async function updateMenuItem(req, res, next) {
   }
 }
 
+async function moveItemsToCategory(req, res, next) {
+  try {
+    var menuItemIds = req.body.menuItemIds;
+    var categoryId = req.body.categoryId;
+    
+    var result = await menuItemService.moveItemsToCategory(menuItemIds, categoryId, req.user);
+    res.json({ message: 'Menu items moved successfully', data: result });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
+    }
+    next(error);
+  }
+}
+
 module.exports = {
   getMenuItems: getMenuItems,
   createMenuItem: createMenuItem,
   updateStatus: updateStatus,
-  updateMenuItem: updateMenuItem
+  updateMenuItem: updateMenuItem,
+  moveItemsToCategory: moveItemsToCategory
 };

@@ -14,6 +14,7 @@ router.get('/', categoryController.getCategories);
 // UC64: Manage menu categories
 router.post('/', categoryController.createCategory);
 router.put('/:id', categoryController.updateCategory);
+router.patch('/:id/move', categoryController.moveCategory);
 router.delete('/:id', categoryController.deleteCategory);
 
 module.exports = router;

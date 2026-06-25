@@ -19,6 +19,9 @@ router.post('/',
 // UC67: Update item status
 router.patch('/:id/status', authMiddleware.authenticate, menuItemController.updateStatus);
 
+// Move items to a category (Global Menu Feature)
+router.patch('/move-category', authMiddleware.authenticate, authMiddleware.requireChainRole, menuItemController.moveItemsToCategory);
+
 // Update item details
 router.put('/:id', 
   authMiddleware.authenticate, 

@@ -42,6 +42,14 @@ function sumExpenses(where) {
   });
 }
 
+function sumExpensesByBranch(where) {
+  return prisma.expense.groupBy({
+    by: ['branchId'],
+    where: where,
+    _sum: { amount: true }
+  });
+}
+
 function findStandardCategories() {
   return prisma.category.findMany({
     where: { branchId: null },
@@ -206,6 +214,7 @@ module.exports = {
   findInvoices: findInvoices,
   countOrders: countOrders,
   sumExpenses: sumExpenses,
+  sumExpensesByBranch: sumExpensesByBranch,
   findStandardCategories: findStandardCategories,
   findStandardMenuItems: findStandardMenuItems,
   findActiveBranches: findActiveBranches,
