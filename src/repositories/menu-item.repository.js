@@ -65,6 +65,13 @@ async function updateMenuItemStatus(id, isActive) {
   });
 }
 
+async function updateMenuItem(id, data) {
+  return prisma.menuItem.update({
+    where: { id: id },
+    data: data
+  });
+}
+
 async function findCurrentToppingGroupAssignments(menuItemId) {
   return prisma.menuItemToppingGroup.findMany({
     where: { menuItemId: menuItemId },
@@ -101,6 +108,7 @@ module.exports = {
   findMenuItemById: findMenuItemById,
   countRecipesForMenuItem: countRecipesForMenuItem,
   updateMenuItemStatus: updateMenuItemStatus,
+  updateMenuItem: updateMenuItem,
   findCurrentToppingGroupAssignments: findCurrentToppingGroupAssignments,
   assignToppingGroups: assignToppingGroups,
   removeToppingGroupAssignments: removeToppingGroupAssignments

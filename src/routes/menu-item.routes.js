@@ -19,6 +19,14 @@ router.post('/',
 // UC67: Update item status
 router.patch('/:id/status', authMiddleware.authenticate, menuItemController.updateStatus);
 
+// Update item details
+router.put('/:id', 
+  authMiddleware.authenticate, 
+  authMiddleware.requireChainRole, 
+  imageUploadMiddleware.singleImage('image'), 
+  menuItemController.updateMenuItem
+);
+
 var menuItemToppingController = require('../controllers/menu-item-topping.controller');
 
 // UC69: Assign Topping Groups
