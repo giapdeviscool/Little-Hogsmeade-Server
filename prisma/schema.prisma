@@ -19,6 +19,7 @@ model Branch {
   closeTime                 DateTime @map("close_time")
   status                    String   @default("active")
   allowLocalPricingOverride Boolean  @default(false) @map("allow_local_pricing_override")
+  imageUrl                  String? @map("image_url")
   createdAt                 DateTime @default(now()) @map("created_at")
 
   branchConfigs     BranchConfig[]     @relation("BranchConfig_branchId_to_Branch")
