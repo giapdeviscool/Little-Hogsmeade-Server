@@ -35,6 +35,7 @@ var stockConversionRoutes = require("./stock-conversion.routes");
 var cashierShiftRoutes = require("./cashier-shift.routes");
 var paymentRoutes = require("./payment.routes");
 var otpRoutes = require("./otp.routes");
+var publicMenuRoutes = require("./public-menu.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 var router = express.Router();
@@ -73,6 +74,7 @@ router.post("/pos/orders/delivery", authMiddleware.authenticate, deliveryControl
 router.use("/preparations", preparationRoutes);
 router.use("/stock-conversions", stockConversionRoutes);
 router.use("/otp", otpRoutes);
+router.use("/public/menu", publicMenuRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({
