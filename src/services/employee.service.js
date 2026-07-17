@@ -231,7 +231,7 @@ async function updateEmployee(id, payload, currentUser) {
     }
 
     // BR-HR13: Revoke POS access
-    updateData.pinCode = null;
+    updateData.pinCode = '*REVOKED*';
     updateData.passwordHash = null;
   }
 

@@ -73,8 +73,13 @@ router.use("/delivery/orders", deliveryRoutes);
 router.post("/pos/orders/delivery", authMiddleware.authenticate, deliveryController.createDeliveryOrder);
 router.use("/preparations", preparationRoutes);
 router.use("/stock-conversions", stockConversionRoutes);
+var stockTransactionRoutes = require("./stock-transaction.routes");
+var stocktakeRoutes = require("./stocktake.routes");
+
 router.use("/otp", otpRoutes);
 router.use("/public/menu", publicMenuRoutes);
+router.use("/stock-transactions", stockTransactionRoutes);
+router.use("/stocktakes", stocktakeRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({
@@ -98,7 +103,8 @@ resourcesConfig.getResources().forEach(function (resource) {
     "categories",
     "topping_groups",
     "ingredients",
-    "customers"
+    "customers",
+    "stock_transactions"
   ];
   if (excludedResources.includes(resource.name)) {
     return;
