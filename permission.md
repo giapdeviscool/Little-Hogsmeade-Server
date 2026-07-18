@@ -60,7 +60,7 @@ Quản lý hàng hóa, công thức, tồn kho:
 ---
 
 ### 5. Phân hệ 5: Nghiệp vụ Quầy POS & Đơn hàng (POS & Order Desk)
-*Quyền truy cập: Thu ngân (`cashier`), Quản lý (`manager`), Bếp (`kitchen`)*
+*Quyền truy cập: Thu ngân (`cashier`), Quản lý (`chain admin`), Bếp (`kitchen`)*
 
 - `order.routes.js`: Tạo, sửa, cập nhật trạng thái đơn (`owner`, `chain admin`, `manager`, `cashier`, `kitchen`).
 - `invoice.routes.js`, `payment.routes.js`: Thanh toán hóa đơn, hoàn tiền (`owner`, `chain admin`, `manager`, `cashier`).
