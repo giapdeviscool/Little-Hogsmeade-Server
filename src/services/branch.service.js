@@ -96,6 +96,7 @@ function normalizeBranchPayload(payload, isCreate) {
   assignRequiredString(data, payload, 'address', isCreate);
   assignRequiredString(data, payload, 'phone', isCreate);
   assignOptionalString(data, payload, 'email');
+  assignOptionalString(data, payload, 'imageUrl');
   assignRequiredNumber(data, payload, 'lat', isCreate);
   assignRequiredNumber(data, payload, 'lng', isCreate);
   assignRequiredDate(data, payload, 'openTime', isCreate);
