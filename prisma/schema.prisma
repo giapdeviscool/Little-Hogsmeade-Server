@@ -36,7 +36,6 @@ model Branch {
   stockTransactions StockTransaction[] @relation("StockTransaction_branchId_to_Branch")
   purchaseOrders    PurchaseOrder[]    @relation("PurchaseOrder_branchId_to_Branch")
   expenses          Expense[]          @relation("Expense_branchId_to_Branch")
-  campaigns         Campaign[]         @relation("Campaign_branchId_to_Branch")
   pages             Page[]             @relation("Page_branchId_to_Branch")
   banners           Banner[]           @relation("Banner_branchId_to_Branch")
   posts             Post[]             @relation("Post_branchId_to_Branch")
@@ -402,6 +401,7 @@ model Customer {
   customerMemberships CustomerMembership[] @relation("CustomerMembership_customerId_to_Customer")
   orders              Order[]              @relation("Order_customerId_to_Customer")
   voucherUsages       VoucherUsage[]       @relation("VoucherUsage_customerId_to_Customer")
+  vouchers            Voucher[]            // Thêm relation back-reference
   reservations        Reservation[]        @relation("Reservation_customerId_to_Customer")
 
   @@map("customers")
@@ -460,20 +460,22 @@ model LoyaltyReward {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   branchId       String   @map("branch_id") @db.ObjectId
   name           String
-  requiredPoints Int      @map("required_points")
-  rewardType     String   @map("reward_type")
-  discountValue  Float    @default(0) @map("discount_value")
-  minOrderValue  Float    @default(0) @map("min_order_value")
-  productId      String?  @map("product_id") @db.ObjectId
   description    String?
+  pointsRequired Int      @map("points_required")
   imageUrl       String?  @map("image_url")
-  status         String   @default("active")
+  isActive       Boolean  @default(true) @map("is_active")
+  discountValue  Float    @default(0) @map("discount_value")
+  discountType   String   @default("percent") @map("discount_type")
+  minOrderValue  Float    @default(0) @map("min_order_value")
+  expiryDays     Int      @default(30) @map("expiry_days")
+  productId      String?  @map("product_id") @db.ObjectId
   isDeleted      Boolean  @default(false) @map("is_deleted")
   createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @map("updated_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   branch  Branch    @relation("LoyaltyReward_branchId_to_Branch", fields: [branchId], references: [id])
   product MenuItem? @relation("LoyaltyReward_productId_to_MenuItem", fields: [productId], references: [id])
+  vouchers Voucher[] // Back-reference
 
   @@map("loyalty_rewards")
 }
@@ -692,41 +694,27 @@ model Expense {
   @@map("expenses")
 }
 
-model Campaign {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  branchId        String?  @map("branch_id") @db.ObjectId
+model Voucher {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
   name            String
   description     String?
-  startDate       DateTime @map("start_date")
-  endDate         DateTime @map("end_date")
-  discountValue   Float    @default(0) @map("discount_value")
-  discountType    String   @default("percent") @map("discount_type")
-  scope           String   @default("global")
-  appliedBranches String[] @default([]) @map("applied_branches") @db.ObjectId
-  isActive        Boolean  @default(true) @map("is_active")
+  code            String?   @unique
+  requiresCode    Boolean   @default(true) @map("requires_code")
+  discountValue   Float     @map("discount_value")
+  discountType    String    @map("discount_type")
+  minOrderValue   Float     @default(0) @map("min_order_value")
+  scope           String    @default("global") @map("scope")
+  appliedBranches String[]  @map("applied_branches") @db.ObjectId
+  customerId      String?   @map("customer_id") @db.ObjectId
+  loyaltyRewardId String?   @map("loyalty_reward_id") @db.ObjectId
+  maxUses         Int       @default(1) @map("max_uses")
+  usedCount       Int       @default(0) @map("used_count")
+  startDate       DateTime  @map("start_date")
+  expireDate      DateTime  @map("expire_date")
+  isActive        Boolean   @default(true) @map("is_active")
 
-  branch Branch? @relation("Campaign_branchId_to_Branch", fields: [branchId], references: [id])
-
-  vouchers Voucher[] @relation("Voucher_campaignId_to_Campaign")
-
-  @@map("campaigns")
-}
-
-model Voucher {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  campaignId    String   @map("campaign_id") @db.ObjectId
-  code          String   @unique
-  type          String
-  discountValue Float    @map("discount_value")
-  minOrderValue Float    @default(0.00) @map("min_order_value")
-  maxUses       Int      @default(100) @map("max_uses")
-  usedCount     Int      @default(0) @map("used_count")
-  startDate     DateTime @map("start_date")
-  expireDate    DateTime @map("expire_date")
-  isActive      Boolean  @default(true) @map("is_active")
-
-  campaign Campaign @relation("Voucher_campaignId_to_Campaign", fields: [campaignId], references: [id])
-
+  customer      Customer?      @relation(fields: [customerId], references: [id])
+  loyaltyReward LoyaltyReward? @relation(fields: [loyaltyRewardId], references: [id])
   invoices      Invoice[]      @relation("Invoice_voucherId_to_Voucher")
   voucherUsages VoucherUsage[] @relation("VoucherUsage_voucherId_to_Voucher")
 

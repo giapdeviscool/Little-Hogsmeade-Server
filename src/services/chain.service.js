@@ -197,8 +197,7 @@ async function updatePricing(payload, user) {
 
 async function createPromotion(payload) {
   var data = normalizePromotionPayload(payload);
-
-  return chainRepository.createCampaign(data);
+  return chainRepository.createVoucher(data);
 }
 
 async function getPromotions(query) {
@@ -212,8 +211,13 @@ async function getPromotions(query) {
     var searchStr = String(query.search).trim();
     where.OR = [
       { name: { contains: searchStr, mode: 'insensitive' } },
-      { description: { contains: searchStr, mode: 'insensitive' } }
+      { description: { contains: searchStr, mode: 'insensitive' } },
+      { code: { contains: searchStr, mode: 'insensitive' } }
     ];
+  }
+
+  if (query.customerId) {
+    where.customerId = query.customerId;
   }
 
   if (query.status === 'active') {
@@ -222,14 +226,14 @@ async function getPromotions(query) {
     where.isActive = false;
   }
 
-  var items = await chainRepository.findCampaigns({
+  var items = await chainRepository.findVouchers({
     where: where,
     skip: skip,
     take: limit,
     orderBy: { startDate: 'desc' }
   });
   
-  var total = await chainRepository.countCampaigns(where);
+  var total = await chainRepository.countVouchers(where);
 
   return {
     items: items,
@@ -244,23 +248,23 @@ async function getPromotions(query) {
 
 async function updatePromotion(id, payload) {
   var data = normalizePromotionPayload(payload);
-  return chainRepository.updateCampaign(id, data);
+  return chainRepository.updateVoucher(id, data);
 }
 
 async function togglePromotionStatus(id) {
   assertValidObjectId(id, 'promotion id');
-  var promotion = await chainRepository.findCampaignById(id);
+  var voucher = await chainRepository.findVoucherById(id);
 
-  if (!promotion) {
+  if (!voucher) {
     throwHttpError(404, 'Promotion not found');
   }
 
-  var newStatus = !promotion.isActive;
-  return chainRepository.updateCampaign(id, { isActive: newStatus });
+  var newStatus = !voucher.isActive;
+  return chainRepository.updateVoucher(id, { isActive: newStatus });
 }
 
 async function deletePromotion(id) {
-  return chainRepository.deleteCampaign(id);
+  return chainRepository.deleteVoucher(id);
 }
 
 async function getMenuSyncPreview() {
@@ -391,12 +395,12 @@ async function assertLocalPricingAllowed(branchId) {
 
 function normalizePromotionPayload(payload) {
   var startDate = parseDate(payload.startDate, 'startDate');
-  var endDate = parseDate(payload.endDate, 'endDate');
+  var expireDate = parseDate(payload.endDate || payload.expireDate, 'expireDate');
   var scope = String(payload.scope || 'global').trim().toLowerCase();
   var appliedBranches = Array.isArray(payload.appliedBranches) ? payload.appliedBranches : [];
 
-  if (endDate <= startDate) {
-    throwHttpError(400, 'endDate must be greater than startDate');
+  if (expireDate <= startDate) {
+    throwHttpError(400, 'expireDate must be greater than startDate');
   }
 
   if (scope !== 'global' && scope !== 'specific') {
@@ -407,17 +411,31 @@ function normalizePromotionPayload(payload) {
     assertValidObjectId(appliedBranches[i], 'appliedBranches');
   }
 
+  var discountValue = Number(payload.discountValue);
+  if (isNaN(discountValue) || discountValue < 0) {
+    throwHttpError(400, 'discountValue must be a positive number');
+  }
+
+  var minOrderValue = Number(payload.minOrderValue) || 0;
+  var maxUses = Number(payload.maxUses) || 100;
+  
+  var requiresCode = payload.requiresCode !== undefined ? Boolean(payload.requiresCode) : true;
+  var code = requiresCode && payload.code ? String(payload.code).trim() : null;
+
   return {
-    branchId: scope === 'specific' && appliedBranches.length === 1 ? appliedBranches[0] : null,
     name: assertNonEmptyString(payload.name, 'name'),
-    description: payload.description ? String(payload.description).trim() : null,
+    description: payload.description ? String(payload.description) : null,
+    code: code,
+    requiresCode: requiresCode,
     startDate: startDate,
-    endDate: endDate,
-    discountValue: parseNonNegativeNumber(payload.discountValue, 'discountValue'),
-    discountType: normalizeDiscountType(payload.discountType),
+    expireDate: expireDate,
+    discountValue: discountValue,
+    discountType: payload.discountType === 'fixed' ? 'fixed' : 'percent',
+    minOrderValue: minOrderValue,
+    maxUses: maxUses,
     scope: scope,
     appliedBranches: scope === 'global' ? [] : appliedBranches,
-    isActive: payload.isActive === undefined ? true : Boolean(payload.isActive)
+    isActive: typeof payload.isActive === 'boolean' ? payload.isActive : true
   };
 }
 
