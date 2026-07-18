@@ -6,6 +6,10 @@ var tableController = require('../controllers/table.controller');
 
 var router = express.Router();
 
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier', 'staff']));
+
+
 router.get('/:id/current-order',
   authMiddleware.authenticate,
   tableController.getCurrentOrder

@@ -6,6 +6,10 @@ var customerValidator = require('../validators/customer.validator');
 
 var router = express.Router();
 
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier', 'staff']));
+
+
 router.get('/', authMiddleware.authenticate, customerController.listCustomers);
 router.get('/auth/check-phone', customerController.checkPhoneAuth);
 router.post('/auth/login', customerController.customerLogin);

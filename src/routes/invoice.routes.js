@@ -4,9 +4,11 @@ var invoiceController = require('../controllers/invoice.controller');
 var invoiceValidator = require('../validators/invoice.validator');
 
 var router = express.Router();
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier']));
 
-router.get('/', authMiddleware.authenticate, invoiceValidator.validateGetInvoicesQuery, invoiceController.getInvoices);
-router.get('/admin', authMiddleware.authenticate, authMiddleware.verifyRole(['chain_admin']), invoiceController.getAdminInvoices);
-router.get('/:id', authMiddleware.authenticate, invoiceValidator.validateGetInvoiceByIdParam, invoiceController.getInvoiceById);
+router.get('/', invoiceValidator.validateGetInvoicesQuery, invoiceController.getInvoices);
+router.get('/admin', authMiddleware.verifyRole(['chain_admin']), invoiceController.getAdminInvoices);
+router.get('/:id', invoiceValidator.validateGetInvoiceByIdParam, invoiceController.getInvoiceById);
 
 module.exports = router;

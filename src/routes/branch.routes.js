@@ -11,7 +11,7 @@ router.get('/', branchController.getBranches);
 router.get('/:branchId/tables', authMiddleware.authenticate, tableController.getTableLayout);
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.requireChainRole);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
 router.post('/', authMiddleware.requireOwner, branchController.createBranch);
 router.put('/:id', branchController.updateBranch);
 router.patch('/:id/toggle-status', branchController.toggleBranchStatus);

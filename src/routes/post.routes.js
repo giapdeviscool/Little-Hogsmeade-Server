@@ -4,6 +4,10 @@ var imageUpload = require("../middlewares/image-upload.middleware");
 
 var router = express.Router();
 
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+
+
 router.get("/", postController.getPosts);
 router.get("/:id", postController.getPostById);
 router.post("/", imageUpload.singleImage("image"), postController.createPost);

@@ -1,5 +1,9 @@
 var express = require('express');
 var router = express.Router();
+
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+
 var ingredientController = require('../controllers/ingredient.controller');
 var authMiddleware = require('../middlewares/auth.middleware');
 

@@ -3,6 +3,10 @@ var pageController = require("../controllers/page.controller");
 
 var router = express.Router();
 
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+
+
 router.get("/", pageController.getPages);
 router.get("/:id", pageController.getPageById);
 router.post("/", pageController.createPage);
