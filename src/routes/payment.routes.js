@@ -8,6 +8,10 @@ var orderValidator = require('../validators/order.validator');
 
 var router = express.Router();
 
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier']));
+
+
 // Webhook is public to bank networks, protected via strict SePay HMAC verification
 router.get('/bank-webhook', (req, res) => {
   res.status(200).json({ success: true, message: 'SePay Webhook endpoint is active and listening.' });

@@ -1,7 +1,11 @@
 var express = require('express');
-var router = express.Router();
-var ingredientController = require('../controllers/ingredient.controller');
 var authMiddleware = require('../middlewares/auth.middleware');
+var router = express.Router();
+
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'kitchen']));
+
+var ingredientController = require('../controllers/ingredient.controller');
 
 router.get('/', authMiddleware.authenticate, ingredientController.getIngredients);
 router.post('/', authMiddleware.authenticate, authMiddleware.requireChainRole, ingredientController.createIngredient);

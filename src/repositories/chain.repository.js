@@ -175,35 +175,143 @@ function updateBranchMenuItemPrices(name, basePrice, branchIds) {
   });
 }
 
-function createCampaign(data) {
-  return prisma.campaign.create({ data: data });
+function createVoucher(data) {
+  return prisma.voucher.create({ data: data });
 }
 
-function findCampaigns(options) {
+function findVouchers(options) {
   var defaultOptions = { orderBy: { startDate: 'desc' } };
-  return prisma.campaign.findMany(options ? Object.assign({}, defaultOptions, options) : defaultOptions);
+  return prisma.voucher.findMany(options ? Object.assign({}, defaultOptions, options) : defaultOptions);
 }
 
-function countCampaigns(where) {
-  return prisma.campaign.count({ where: where || {} });
+function countVouchers(where) {
+  return prisma.voucher.count({ where: where || {} });
 }
 
-function findCampaignById(id) {
-  return prisma.campaign.findUnique({
+function findVoucherById(id) {
+  return prisma.voucher.findUnique({
     where: { id: id }
   });
 }
 
-function updateCampaign(id, data) {
-  return prisma.campaign.update({
+function updateVoucher(id, data) {
+  return prisma.voucher.update({
     where: { id: id },
     data: data
   });
 }
 
-function deleteCampaign(id) {
-  return prisma.campaign.delete({
+function deleteVoucher(id) {
+  return prisma.voucher.delete({
     where: { id: id }
+  });
+}
+
+// ===================== Branch Menu Junctions =====================
+
+function findBranchCategories(branchId) {
+  return prisma.branchCategory.findMany({
+    where: { branchId: branchId },
+    include: { category: true }
+  });
+}
+
+function upsertBranchCategories(branchId, entries) {
+  return prisma.$transaction(async function(tx) {
+    await tx.branchCategory.deleteMany({
+      where: { branchId: branchId }
+    });
+
+    for (var i = 0; i < entries.length; i += 1) {
+      await tx.branchCategory.create({
+        data: {
+          branchId: branchId,
+          categoryId: entries[i].categoryId,
+          isActive: entries[i].isActive !== undefined ? entries[i].isActive : true,
+          displayOrder: entries[i].displayOrder !== undefined ? entries[i].displayOrder : null
+        }
+      });
+    }
+
+    return entries.length;
+  });
+}
+
+function findBranchMenuItems(branchId) {
+  return prisma.branchMenuItem.findMany({
+    where: { branchId: branchId },
+    include: { menuItem: true }
+  });
+}
+
+function upsertBranchMenuItems(branchId, entries) {
+  return prisma.$transaction(async function(tx) {
+    await tx.branchMenuItem.deleteMany({
+      where: { branchId: branchId }
+    });
+
+    for (var i = 0; i < entries.length; i += 1) {
+      await tx.branchMenuItem.create({
+        data: {
+          branchId: branchId,
+          menuItemId: entries[i].menuItemId,
+          isActive: entries[i].isActive !== undefined ? entries[i].isActive : true,
+          basePrice: entries[i].basePrice !== undefined ? entries[i].basePrice : null
+        }
+      });
+    }
+
+    return entries.length;
+  });
+}
+
+function replaceBranchJunctionMenu(branchId, categoryEntries, menuItemEntries) {
+  return prisma.$transaction(async function(tx) {
+    await tx.branchMenuItem.deleteMany({
+      where: { branchId: branchId }
+    });
+
+    await tx.branchCategory.deleteMany({
+      where: { branchId: branchId }
+    });
+
+    for (var i = 0; i < categoryEntries.length; i += 1) {
+      await tx.branchCategory.create({
+        data: {
+          branchId: branchId,
+          categoryId: categoryEntries[i].categoryId,
+          isActive: categoryEntries[i].isActive !== undefined ? categoryEntries[i].isActive : true,
+          displayOrder: categoryEntries[i].displayOrder !== undefined ? categoryEntries[i].displayOrder : null
+        }
+      });
+    }
+
+    for (var j = 0; j < menuItemEntries.length; j += 1) {
+      await tx.branchMenuItem.create({
+        data: {
+          branchId: branchId,
+          menuItemId: menuItemEntries[j].menuItemId,
+          isActive: menuItemEntries[j].isActive !== undefined ? menuItemEntries[j].isActive : true,
+          basePrice: menuItemEntries[j].basePrice !== undefined ? menuItemEntries[j].basePrice : null
+        }
+      });
+    }
+
+    return { categories: categoryEntries.length, menuItems: menuItemEntries.length };
+  });
+}
+
+function findBranchSpecificCategories(branchId) {
+  return prisma.category.findMany({
+    where: { branchId: branchId, isActive: true },
+    orderBy: { displayOrder: 'asc' }
+  });
+}
+
+function findBranchSpecificMenuItems(branchId) {
+  return prisma.menuItem.findMany({
+    where: { branchId: branchId, isActive: true },
+    include: { menuItemVariants: true }
   });
 }
 
@@ -221,10 +329,17 @@ module.exports = {
   replaceBranchMenu: replaceBranchMenu,
   updateStandardMenuItemPrice: updateStandardMenuItemPrice,
   updateBranchMenuItemPrices: updateBranchMenuItemPrices,
-  createCampaign: createCampaign,
-  findCampaigns: findCampaigns,
-  countCampaigns: countCampaigns,
-  findCampaignById: findCampaignById,
-  updateCampaign: updateCampaign,
-  deleteCampaign: deleteCampaign
+  findBranchCategories: findBranchCategories,
+  upsertBranchCategories: upsertBranchCategories,
+  findBranchMenuItems: findBranchMenuItems,
+  upsertBranchMenuItems: upsertBranchMenuItems,
+  replaceBranchJunctionMenu: replaceBranchJunctionMenu,
+  findBranchSpecificCategories: findBranchSpecificCategories,
+  findBranchSpecificMenuItems: findBranchSpecificMenuItems,
+  createVoucher: createVoucher,
+  findVouchers: findVouchers,
+  countVouchers: countVouchers,
+  findVoucherById: findVoucherById,
+  updateVoucher: updateVoucher,
+  deleteVoucher: deleteVoucher
 };

@@ -5,19 +5,20 @@ var validate = require('../middlewares/validate.middleware');
 var orderValidator = require('../validators/order.validator');
 
 var router = express.Router();
+var orderAuth = [authMiddleware.authenticate, authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier', 'kitchen'])];
 
-router.post('/', authMiddleware.authenticate, validate(orderValidator.createOrderSchema), orderController.createOrder);
+router.post('/', orderAuth, validate(orderValidator.createOrderSchema), orderController.createOrder);
 router.post('/:id/items',
-  authMiddleware.authenticate,
+  orderAuth,
   validate(orderValidator.addOrderItemsSchema),
   orderController.addItems
 );
 router.post('/:id/change-table',
-  authMiddleware.authenticate,
+  orderAuth,
   validate(orderValidator.changeTableSchema),
   orderController.changeTable
 );
-router.patch('/:id/status', authMiddleware.authenticate, validate(orderValidator.updateOrderStatusSchema), orderController.updateOrderStatus);
-router.delete('/:id', authMiddleware.authenticate, orderController.deleteOrder);
+router.patch('/:id/status', orderAuth, validate(orderValidator.updateOrderStatusSchema), orderController.updateOrderStatus);
+router.delete('/:id', [authMiddleware.authenticate, authMiddleware.verifyRole(['owner', 'chain admin', 'manager'])], orderController.deleteOrder);
 
 module.exports = router;

@@ -1,7 +1,11 @@
 var express = require('express');
-var router = express.Router();
-var toppingGroupController = require('../controllers/topping-group.controller');
 var authMiddleware = require('../middlewares/auth.middleware');
+var router = express.Router();
+
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+
+var toppingGroupController = require('../controllers/topping-group.controller');
 
 router.get('/', authMiddleware.authenticate, authMiddleware.requireChainRole, toppingGroupController.getToppingGroups);
 router.post('/', authMiddleware.authenticate, authMiddleware.requireChainRole, toppingGroupController.createToppingGroup);

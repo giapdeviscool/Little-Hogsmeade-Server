@@ -141,9 +141,25 @@ async function syncMenu() {
   var branches = await chainRepository.findActiveBranches();
   var syncedBranchIds = [];
 
+  var categoryEntries = categories.map(function(cat) {
+    return {
+      categoryId: cat.id,
+      isActive: true,
+      displayOrder: cat.displayOrder
+    };
+  });
+
+  var menuItemEntries = menuItems.map(function(item) {
+    return {
+      menuItemId: item.id,
+      isActive: true,
+      basePrice: null
+    };
+  });
+
   for (var i = 0; i < branches.length; i += 1) {
-    var branchId = await chainRepository.replaceBranchMenu(branches[i], categories, menuItems);
-    syncedBranchIds.push(branchId);
+    var result = await chainRepository.replaceBranchJunctionMenu(branches[i].id, categoryEntries, menuItemEntries);
+    syncedBranchIds.push(branches[i].id);
   }
 
   return {
@@ -172,25 +188,16 @@ async function updatePricing(payload, user) {
     targetBranchIds = [user.branchId];
   }
 
-  var branches = targetBranchIds.length > 0
-    ? await branchRepository.findAll({ where: { id: { in: targetBranchIds }, status: 'active' } })
-    : await branchRepository.findAll({ where: { status: 'active' } });
-  var activeBranchIds = branches.map(function(branch) {
-    return branch.id;
-  });
-  var updatedBranches = await chainRepository.updateBranchMenuItemPrices(standardItem.name, basePrice, activeBranchIds);
-
   return {
     menuItem: standardItem,
-    updatedBranchItems: updatedBranches.count,
-    targetBranches: activeBranchIds.length
+    updatedBranchItems: 0,
+    targetBranches: 0
   };
 }
 
 async function createPromotion(payload) {
   var data = normalizePromotionPayload(payload);
-
-  return chainRepository.createCampaign(data);
+  return chainRepository.createVoucher(data);
 }
 
 async function getPromotions(query) {
@@ -204,8 +211,13 @@ async function getPromotions(query) {
     var searchStr = String(query.search).trim();
     where.OR = [
       { name: { contains: searchStr, mode: 'insensitive' } },
-      { description: { contains: searchStr, mode: 'insensitive' } }
+      { description: { contains: searchStr, mode: 'insensitive' } },
+      { code: { contains: searchStr, mode: 'insensitive' } }
     ];
+  }
+
+  if (query.customerId) {
+    where.customerId = query.customerId;
   }
 
   if (query.status === 'active') {
@@ -214,14 +226,14 @@ async function getPromotions(query) {
     where.isActive = false;
   }
 
-  var items = await chainRepository.findCampaigns({
+  var items = await chainRepository.findVouchers({
     where: where,
     skip: skip,
     take: limit,
     orderBy: { startDate: 'desc' }
   });
   
-  var total = await chainRepository.countCampaigns(where);
+  var total = await chainRepository.countVouchers(where);
 
   return {
     items: items,
@@ -236,23 +248,23 @@ async function getPromotions(query) {
 
 async function updatePromotion(id, payload) {
   var data = normalizePromotionPayload(payload);
-  return chainRepository.updateCampaign(id, data);
+  return chainRepository.updateVoucher(id, data);
 }
 
 async function togglePromotionStatus(id) {
   assertValidObjectId(id, 'promotion id');
-  var promotion = await chainRepository.findCampaignById(id);
+  var voucher = await chainRepository.findVoucherById(id);
 
-  if (!promotion) {
+  if (!voucher) {
     throwHttpError(404, 'Promotion not found');
   }
 
-  var newStatus = !promotion.isActive;
-  return chainRepository.updateCampaign(id, { isActive: newStatus });
+  var newStatus = !voucher.isActive;
+  return chainRepository.updateVoucher(id, { isActive: newStatus });
 }
 
 async function deletePromotion(id) {
-  return chainRepository.deleteCampaign(id);
+  return chainRepository.deleteVoucher(id);
 }
 
 async function getMenuSyncPreview() {
@@ -263,6 +275,110 @@ async function getMenuSyncPreview() {
     categories: categories,
     menuItems: menuItems
   };
+}
+
+async function getBranchMenu(branchId) {
+  var branchCategories = await chainRepository.findBranchCategories(branchId);
+  var branchMenuItems = await chainRepository.findBranchMenuItems(branchId);
+  var branchSpecificCategories = await chainRepository.findBranchSpecificCategories(branchId);
+  var branchSpecificMenuItems = await chainRepository.findBranchSpecificMenuItems(branchId);
+
+  var mergedCategories = [].concat(
+    branchCategories.map(function(j) {
+      return {
+        id: j.category.id,
+        name: j.category.name,
+        icon: j.category.icon,
+        displayOrder: j.displayOrder !== null ? j.displayOrder : j.category.displayOrder,
+        isActive: j.isActive,
+        isJunction: true
+      };
+    }),
+    branchSpecificCategories.map(function(cat) {
+      return {
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+        displayOrder: cat.displayOrder,
+        isActive: cat.isActive,
+        isJunction: false
+      };
+    })
+  );
+
+  var mergedMenuItems = [].concat(
+    branchMenuItems.map(function(j) {
+      return {
+        id: j.menuItem.id,
+        name: j.menuItem.name,
+        description: j.menuItem.description,
+        imageUrl: j.menuItem.imageUrl,
+        basePrice: j.basePrice !== null ? j.basePrice : j.menuItem.basePrice,
+        categoryId: j.menuItem.categoryId,
+        isActive: j.isActive,
+        isFeatured: j.menuItem.isFeatured,
+        itemType: j.menuItem.itemType,
+        menuItemVariants: j.menuItem.menuItemVariants || [],
+        isJunction: true
+      };
+    }),
+    branchSpecificMenuItems.map(function(item) {
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        imageUrl: item.imageUrl,
+        basePrice: item.basePrice,
+        categoryId: item.categoryId,
+        isActive: item.isActive,
+        isFeatured: item.isFeatured,
+        itemType: item.itemType,
+        menuItemVariants: item.menuItemVariants || [],
+        isJunction: false
+      };
+    })
+  );
+
+  return {
+    categories: mergedCategories,
+    menuItems: mergedMenuItems
+  };
+}
+
+async function updateBranchMenuCategories(branchId, payload) {
+  assertValidObjectId(branchId, 'branchId');
+
+  var entries = payload.entries || [];
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throwHttpError(400, 'entries must be a non-empty array');
+  }
+
+  for (var i = 0; i < entries.length; i += 1) {
+    assertValidObjectId(entries[i].categoryId, 'entries[' + i + '].categoryId');
+  }
+
+  var updated = await chainRepository.upsertBranchCategories(branchId, entries);
+
+  return { updated: updated };
+}
+
+async function updateBranchMenuItems(branchId, payload) {
+  assertValidObjectId(branchId, 'branchId');
+
+  var entries = payload.entries || [];
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throwHttpError(400, 'entries must be a non-empty array');
+  }
+
+  for (var i = 0; i < entries.length; i += 1) {
+    assertValidObjectId(entries[i].menuItemId, 'entries[' + i + '].menuItemId');
+  }
+
+  var updated = await chainRepository.upsertBranchMenuItems(branchId, entries);
+
+  return { updated: updated };
 }
 
 async function assertLocalPricingAllowed(branchId) {
@@ -279,12 +395,12 @@ async function assertLocalPricingAllowed(branchId) {
 
 function normalizePromotionPayload(payload) {
   var startDate = parseDate(payload.startDate, 'startDate');
-  var endDate = parseDate(payload.endDate, 'endDate');
+  var expireDate = parseDate(payload.endDate || payload.expireDate, 'expireDate');
   var scope = String(payload.scope || 'global').trim().toLowerCase();
   var appliedBranches = Array.isArray(payload.appliedBranches) ? payload.appliedBranches : [];
 
-  if (endDate <= startDate) {
-    throwHttpError(400, 'endDate must be greater than startDate');
+  if (expireDate <= startDate) {
+    throwHttpError(400, 'expireDate must be greater than startDate');
   }
 
   if (scope !== 'global' && scope !== 'specific') {
@@ -295,17 +411,31 @@ function normalizePromotionPayload(payload) {
     assertValidObjectId(appliedBranches[i], 'appliedBranches');
   }
 
+  var discountValue = Number(payload.discountValue);
+  if (isNaN(discountValue) || discountValue < 0) {
+    throwHttpError(400, 'discountValue must be a positive number');
+  }
+
+  var minOrderValue = Number(payload.minOrderValue) || 0;
+  var maxUses = Number(payload.maxUses) || 100;
+  
+  var requiresCode = payload.requiresCode !== undefined ? Boolean(payload.requiresCode) : true;
+  var code = requiresCode && payload.code ? String(payload.code).trim() : null;
+
   return {
-    branchId: scope === 'specific' && appliedBranches.length === 1 ? appliedBranches[0] : null,
     name: assertNonEmptyString(payload.name, 'name'),
-    description: payload.description ? String(payload.description).trim() : null,
+    description: payload.description ? String(payload.description) : null,
+    code: code,
+    requiresCode: requiresCode,
     startDate: startDate,
-    endDate: endDate,
-    discountValue: parseNonNegativeNumber(payload.discountValue, 'discountValue'),
-    discountType: normalizeDiscountType(payload.discountType),
+    expireDate: expireDate,
+    discountValue: discountValue,
+    discountType: payload.discountType === 'fixed' ? 'fixed' : 'percent',
+    minOrderValue: minOrderValue,
+    maxUses: maxUses,
     scope: scope,
     appliedBranches: scope === 'global' ? [] : appliedBranches,
-    isActive: payload.isActive === undefined ? true : Boolean(payload.isActive)
+    isActive: typeof payload.isActive === 'boolean' ? payload.isActive : true
   };
 }
 
@@ -533,5 +663,8 @@ module.exports = {
   updatePromotion: updatePromotion,
   togglePromotionStatus: togglePromotionStatus,
   deletePromotion: deletePromotion,
-  getMenuSyncPreview: getMenuSyncPreview
+  getMenuSyncPreview: getMenuSyncPreview,
+  getBranchMenu: getBranchMenu,
+  updateBranchMenuCategories: updateBranchMenuCategories,
+  updateBranchMenuItems: updateBranchMenuItems
 };

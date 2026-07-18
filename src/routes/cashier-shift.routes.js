@@ -4,6 +4,10 @@ var authMiddleware = require('../middlewares/auth.middleware');
 
 var router = express.Router();
 
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier']));
+
+
 // All cashier shift endpoints require an authenticated user (Cashier/Staff/Admin)
 router.use(authMiddleware.authenticate);
 

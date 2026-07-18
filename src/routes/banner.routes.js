@@ -1,8 +1,13 @@
-var express = require("express");
+var express = require('express');
+var authMiddleware = require('../middlewares/auth.middleware');
 var bannerController = require("../controllers/banner.controller");
 var imageUpload = require("../middlewares/image-upload.middleware");
 
 var router = express.Router();
+
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
+
 
 router.get("/", bannerController.getBanners);
 router.get("/:id", bannerController.getBannerById);
