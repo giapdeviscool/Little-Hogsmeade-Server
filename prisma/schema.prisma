@@ -95,7 +95,8 @@ model Employee {
   status       String   @default("active")
   pinCode      String   @map("pin_code")
   passwordHash String?
-  totpSecret   String?  @map("totp_secret")
+  totpSecret     String?  @map("totp_secret")
+  tempTotpSecret String?  @map("temp_totp_secret")
 
   branch Branch @relation("Employee_branchId_to_Branch", fields: [branchId], references: [id])
   role   Role   @relation("Employee_roleId_to_Role", fields: [roleId], references: [id])
