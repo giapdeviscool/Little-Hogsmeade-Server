@@ -45,6 +45,8 @@ model Branch {
   rosters           Roster[]           @relation("Roster_branchId_to_Branch")
   toppingGroups     ToppingGroup[]     @relation("ToppingGroup_branchId_to_Branch")
   cashierShifts     CashierShift[]     @relation("CashierShift_branchId_to_Branch")
+  branchCategories  BranchCategory[]  @relation("BranchCategory_branchId_to_Branch")
+  branchMenuItems   BranchMenuItem[]  @relation("BranchMenuItem_branchId_to_Branch")
 
   @@map("branches")
 }
@@ -176,6 +178,8 @@ model Category {
 
   menuItems MenuItem[] @relation("MenuItem_categoryId_to_Category")
 
+  branchCategories BranchCategory[] @relation("BranchCategory_categoryId_to_Category")
+
   @@map("categories")
 }
 
@@ -199,8 +203,43 @@ model MenuItem {
   recipes               Recipe[]               @relation("Recipe_menuItemId_to_MenuItem")
   orderItems            OrderItem[]            @relation("OrderItem_menuItemId_to_MenuItem")
   loyaltyRewards        LoyaltyReward[]        @relation("LoyaltyReward_productId_to_MenuItem")
+  branchMenuItems       BranchMenuItem[]       @relation("BranchMenuItem_menuItemId_to_MenuItem")
 
   @@map("menu_items")
+}
+
+// =====================================================
+// Junction: Branch ↔ Category
+// =====================================================
+model BranchCategory {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId    String  @map("branch_id") @db.ObjectId
+  categoryId  String  @map("category_id") @db.ObjectId
+  isActive    Boolean @default(true) @map("is_active")
+  displayOrder Int?  @map("display_order")
+
+  branch   Branch   @relation("BranchCategory_branchId_to_Branch", fields: [branchId], references: [id])
+  category Category @relation("BranchCategory_categoryId_to_Category", fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, categoryId])
+  @@map("branch_categories")
+}
+
+// =====================================================
+// Junction: Branch ↔ MenuItem
+// =====================================================
+model BranchMenuItem {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId   String  @map("branch_id") @db.ObjectId
+  menuItemId String  @map("menu_item_id") @db.ObjectId
+  isActive   Boolean @default(true) @map("is_active")
+  basePrice  Float?  @map("base_price")
+
+  branch   Branch   @relation("BranchMenuItem_branchId_to_Branch", fields: [branchId], references: [id])
+  menuItem MenuItem @relation("BranchMenuItem_menuItemId_to_MenuItem", fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, menuItemId])
+  @@map("branch_menu_items")
 }
 
 model MenuItemVariant {
