@@ -25,8 +25,8 @@ async function getRewards(user, query) {
     };
   }
 
-  if (query && query.reward_type) {
-    filters.rewardType = parseRewardType(query.reward_type);
+  if (query && query.discount_type) {
+    filters.discountType = query.discount_type;
   }
 
   if (query && query.status) {
@@ -54,7 +54,7 @@ async function createReward(payload, user, query) {
   var branchId = resolveBranchId(user, (payload && payload.branchId) || (query && query.branchId));
   var data = buildRewardData(payload, branchId);
 
-  await validateProductForReward(data.rewardType, data.productId, branchId);
+  await validateProductForReward(data.discountType, data.productId, branchId);
 
   var reward = await loyaltyRewardRepository.createReward(data);
 
@@ -76,10 +76,10 @@ async function updateReward(id, payload, user) {
 
   var data = buildRewardUpdateData(payload, reward);
   
-  if (data.productId !== undefined || data.rewardType !== undefined) {
-    var rewardType = data.rewardType !== undefined ? data.rewardType : reward.rewardType;
+  if (data.productId !== undefined || data.discountType !== undefined) {
+    var discountType = data.discountType !== undefined ? data.discountType : reward.discountType;
     var productId = data.productId !== undefined ? data.productId : reward.productId;
-    await validateProductForReward(rewardType, productId, reward.branchId);
+    await validateProductForReward(discountType, productId, reward.branchId);
   }
   const updatedReward = await loyaltyRewardRepository.updateReward(id, data);
   return updatedReward;
@@ -97,7 +97,7 @@ async function deleteReward(id, user) {
   assertBranchAccess(user, reward.branchId);
 
   await loyaltyRewardRepository.updateReward(id, {
-    status: 'inactive',
+    isActive: false,
     isDeleted: true,
     updatedAt: new Date()
   });
@@ -108,26 +108,30 @@ function buildRewardData(payload, branchId) {
     throwHttpError(400, 'name is required');
   }
 
-  var rewardType = parseRewardType(payload.reward_type);
-  var requiredPoints = parseRequiredPoints(payload.required_points);
-  var status = payload.status !== undefined ? parseStatus(payload.status) : 'active';
-  var discountValue = normalizeNumber(payload.discount_value);
-  var minOrderValue = normalizeNumber(payload.min_order_value);
-  var productId = payload.product_id || null;
+  var requiredPoints = parseRequiredPoints(payload.pointsRequired);
+  var discountValue = normalizeNumber(payload.discountValue);
+  var discountType = payload.discountType;
+  if (discountType !== 'fixed' && discountType !== 'gift') {
+    discountType = 'percent';
+  }
+  var minOrderValue = normalizeNumber(payload.minOrderValue);
+  var expiryDays = parsePositiveInt(payload.expiryDays, 30);
+  var productId = payload.productId || null;
 
-  validateRewardTypeFields(rewardType, discountValue, minOrderValue, productId);
+  validateRewardTypeFields(discountType, discountValue, minOrderValue, productId);
 
   return {
     branchId: branchId,
     name: String(payload.name).trim(),
-    requiredPoints: requiredPoints,
-    rewardType: rewardType,
+    pointsRequired: requiredPoints,
     discountValue: discountValue,
+    discountType: discountType,
     minOrderValue: minOrderValue,
+    expiryDays: expiryDays,
     productId: productId,
     description: payload.description ? String(payload.description).trim() : null,
-    imageUrl: payload.image_url ? String(payload.image_url).trim() : null,
-    status: status
+    imageUrl: payload.imageUrl ? String(payload.imageUrl).trim() : null,
+    isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : true
   };
 }
 
@@ -144,85 +148,85 @@ function buildRewardUpdateData(payload, reward) {
     if (!String(payload.name).trim()) {
       throwHttpError(400, 'name must be a non-empty string');
     }
-
     data.name = String(payload.name).trim();
   }
 
-  if (payload.required_points !== undefined) {
-    data.requiredPoints = parseRequiredPoints(payload.required_points);
+  if (payload.pointsRequired !== undefined) {
+    data.pointsRequired = parseRequiredPoints(payload.pointsRequired);
   }
 
-  if (payload.reward_type !== undefined) {
-    data.rewardType = parseRewardType(payload.reward_type);
+  if (payload.discountType !== undefined) {
+    var dt = payload.discountType;
+    data.discountType = (dt === 'fixed' || dt === 'gift') ? dt : 'percent';
   }
 
-  if (payload.discount_value !== undefined) {
-    data.discountValue = normalizeNumber(payload.discount_value);
+  if (payload.discountValue !== undefined) {
+    data.discountValue = normalizeNumber(payload.discountValue);
   }
 
-  if (payload.min_order_value !== undefined) {
-    data.minOrderValue = normalizeNumber(payload.min_order_value);
+  if (payload.minOrderValue !== undefined) {
+    data.minOrderValue = normalizeNumber(payload.minOrderValue);
   }
 
-  if (payload.product_id !== undefined) {
-    data.productId = payload.product_id || null;
+  if (payload.expiryDays !== undefined) {
+    data.expiryDays = parsePositiveInt(payload.expiryDays, 30);
+  }
+
+  if (payload.productId !== undefined) {
+    data.productId = payload.productId || null;
   }
 
   if (payload.description !== undefined) {
     data.description = payload.description ? String(payload.description).trim() : null;
   }
 
-  if (payload.image_url !== undefined) {
-    data.imageUrl = payload.image_url ? String(payload.image_url).trim() : null;
+  if (payload.imageUrl !== undefined) {
+    data.imageUrl = payload.imageUrl ? String(payload.imageUrl).trim() : null;
   }
 
-  if (payload.status !== undefined) {
-    data.status = parseStatus(payload.status);
+  if (payload.isActive !== undefined) {
+    data.isActive = Boolean(payload.isActive);
   }
 
-  var rewardType = data.rewardType !== undefined ? data.rewardType : reward.rewardType;
+  var discountType = data.discountType !== undefined ? data.discountType : reward.discountType;
   var discountValue = data.discountValue !== undefined ? data.discountValue : reward.discountValue;
   var minOrderValue = data.minOrderValue !== undefined ? data.minOrderValue : reward.minOrderValue;
   var productId = data.productId !== undefined ? data.productId : reward.productId;
 
-  validateRewardTypeFields(rewardType, discountValue, minOrderValue, productId);
+  validateRewardTypeFields(discountType, discountValue, minOrderValue, productId);
 
   return data;
 }
 
-function validateRewardTypeFields(rewardType, discountValue, minOrderValue, productId) {
-  if (rewardType === 'VOUCHER') {
-    if (discountValue <= 0) {
-      throwHttpError(400, 'discount_value must be greater than 0 for VOUCHER rewards');
-    }
-
-    if (minOrderValue < 0) {
-      throwHttpError(400, 'min_order_value must be greater than or equal to 0');
-    }
-
-    return;
+function validateRewardTypeFields(discountType, discountValue, minOrderValue, productId) {
+  // If it's a product reward (productId exists), it can also have discounts or just be a free product.
+  // We'll just validate basic number constraints.
+  if (discountValue < 0) {
+    throwHttpError(400, 'discountValue must be greater than or equal to 0');
   }
 
-  if (!productId) {
-    throwHttpError(400, 'product_id is required for FREE_PRODUCT rewards');
+  if (minOrderValue < 0) {
+    throwHttpError(400, 'minOrderValue must be greater than or equal to 0');
   }
 
-  assertValidObjectId(productId, 'product_id');
+  if (productId) {
+    assertValidObjectId(productId, 'productId');
+  }
 }
 
-async function validateProductForReward(rewardType, productId, branchId) {
-  if (rewardType !== 'FREE_PRODUCT') {
+async function validateProductForReward(discountType, productId, branchId) {
+  if (!productId) {
     return;
   }
 
   var product = await menuItemRepository.findMenuItemById(productId);
 
   if (!product || !product.isActive) {
-    throwHttpError(400, 'product_id must reference an active menu item');
+    throwHttpError(400, 'productId must reference an active menu item');
   }
 
   if (product.branchId && product.branchId !== branchId) {
-    throwHttpError(400, 'product_id must belong to the same branch');
+    throwHttpError(400, 'productId must belong to the same branch');
   }
 }
 
@@ -230,13 +234,16 @@ function formatRewardResponse(reward) {
   var item = {
     id: reward.id,
     name: reward.name,
-    required_points: reward.requiredPoints,
-    reward_type: reward.rewardType,
-    discount_value: reward.discountValue,
-    min_order_value: reward.minOrderValue,
-    product_id: reward.productId,
-    status: reward.status,
-    description: reward.description || null
+    pointsRequired: reward.pointsRequired,
+    discountValue: reward.discountValue,
+    discountType: reward.discountType,
+    minOrderValue: reward.minOrderValue,
+    expiryDays: reward.expiryDays,
+    productId: reward.productId,
+    isActive: reward.isActive,
+    isDeleted: reward.isDeleted,
+    description: reward.description || null,
+    imageUrl: reward.imageUrl || null
   };
 
   if (reward.product && reward.product.name) {
@@ -270,7 +277,7 @@ function parseRequiredPoints(value) {
   var points = parseInt(value, 10);
 
   if (!Number.isFinite(points) || points < MIN_REQUIRED_POINTS) {
-    throwHttpError(400, 'required_points must be greater than or equal to ' + MIN_REQUIRED_POINTS);
+    throwHttpError(400, 'pointsRequired must be greater than or equal to ' + MIN_REQUIRED_POINTS);
   }
 
   return points;

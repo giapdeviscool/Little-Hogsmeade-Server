@@ -31,7 +31,6 @@ var resources = [
   { name: 'purchase_order_items', path: 'purchase-order-items', model: 'PurchaseOrderItem', delegate: 'purchaseOrderItem' },
   { name: 'expense_categories', path: 'expense-categories', model: 'ExpenseCategory', delegate: 'expenseCategory' },
   { name: 'expenses', path: 'expenses', model: 'Expense', delegate: 'expense' },
-  { name: 'campaigns', path: 'campaigns', model: 'Campaign', delegate: 'campaign' },
   { name: 'vouchers', path: 'vouchers', model: 'Voucher', delegate: 'voucher' },
   { name: 'voucher_usages', path: 'voucher-usages', model: 'VoucherUsage', delegate: 'voucherUsage' },
   { name: 'pages', path: 'pages', model: 'Page', delegate: 'page' },
