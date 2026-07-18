@@ -1,5 +1,6 @@
 var express = require('express');
 var loyaltyController = require('../controllers/loyalty.controller');
+var tierController = require('../controllers/tier.controller');
 var authMiddleware = require('../middlewares/auth.middleware');
 
 var router = express.Router();
@@ -14,5 +15,10 @@ router.get('/rewards', loyaltyController.getRewards);
 router.post('/rewards', loyaltyController.createReward);
 router.put('/rewards/:id', loyaltyController.updateReward);
 router.delete('/rewards/:id', loyaltyController.deleteReward);
+
+router.get('/tiers', tierController.getTiers);
+router.post('/tiers', tierController.createTier);
+router.put('/tiers/:id', tierController.updateTier);
+router.delete('/tiers/:id', tierController.deleteTier);
 
 module.exports = router;

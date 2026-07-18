@@ -175,34 +175,34 @@ function updateBranchMenuItemPrices(name, basePrice, branchIds) {
   });
 }
 
-function createCampaign(data) {
-  return prisma.campaign.create({ data: data });
+function createVoucher(data) {
+  return prisma.voucher.create({ data: data });
 }
 
-function findCampaigns(options) {
+function findVouchers(options) {
   var defaultOptions = { orderBy: { startDate: 'desc' } };
-  return prisma.campaign.findMany(options ? Object.assign({}, defaultOptions, options) : defaultOptions);
+  return prisma.voucher.findMany(options ? Object.assign({}, defaultOptions, options) : defaultOptions);
 }
 
-function countCampaigns(where) {
-  return prisma.campaign.count({ where: where || {} });
+function countVouchers(where) {
+  return prisma.voucher.count({ where: where || {} });
 }
 
-function findCampaignById(id) {
-  return prisma.campaign.findUnique({
+function findVoucherById(id) {
+  return prisma.voucher.findUnique({
     where: { id: id }
   });
 }
 
-function updateCampaign(id, data) {
-  return prisma.campaign.update({
+function updateVoucher(id, data) {
+  return prisma.voucher.update({
     where: { id: id },
     data: data
   });
 }
 
-function deleteCampaign(id) {
-  return prisma.campaign.delete({
+function deleteVoucher(id) {
+  return prisma.voucher.delete({
     where: { id: id }
   });
 }
@@ -221,10 +221,10 @@ module.exports = {
   replaceBranchMenu: replaceBranchMenu,
   updateStandardMenuItemPrice: updateStandardMenuItemPrice,
   updateBranchMenuItemPrices: updateBranchMenuItemPrices,
-  createCampaign: createCampaign,
-  findCampaigns: findCampaigns,
-  countCampaigns: countCampaigns,
-  findCampaignById: findCampaignById,
-  updateCampaign: updateCampaign,
-  deleteCampaign: deleteCampaign
+  createVoucher: createVoucher,
+  findVouchers: findVouchers,
+  countVouchers: countVouchers,
+  findVoucherById: findVoucherById,
+  updateVoucher: updateVoucher,
+  deleteVoucher: deleteVoucher
 };
