@@ -1,4 +1,5 @@
-var express = require("express");
+var express = require('express');
+var authMiddleware = require('../middlewares/auth.middleware');
 var eventController = require("../controllers/event.controller");
 var imageUpload = require("../middlewares/image-upload.middleware");
 

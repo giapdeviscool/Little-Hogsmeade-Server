@@ -6,7 +6,7 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
 
 router.get('/configs', loyaltyController.getConfig);
 router.put('/configs', loyaltyController.updateConfig);
