@@ -36,6 +36,7 @@ var cashierShiftRoutes = require("./cashier-shift.routes");
 var paymentRoutes = require("./payment.routes");
 var otpRoutes = require("./otp.routes");
 var publicMenuRoutes = require("./public-menu.routes");
+var branchMenuRoutes = require("./branch-menu.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
 var router = express.Router();
@@ -43,6 +44,7 @@ router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/branches", branchRoutes);
 router.use("/chain", chainRoutes);
+router.use("/chain/branch-menu", branchMenuRoutes);
 router.use("/promotions", promotionRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/shifts", shiftRoutes); // UC59

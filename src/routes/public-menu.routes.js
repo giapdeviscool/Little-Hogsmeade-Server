@@ -1,6 +1,7 @@
 var express = require('express');
 
 var prisma = require('../lib/prisma');
+var chainService = require('../services/chain.service');
 
 var router = express.Router();
 
@@ -19,10 +20,7 @@ router.get('/', async function (req, res, next) {
 
     var menuItems = await prisma.menuItem.findMany({
       where: { branchId: null, isActive: true },
-      orderBy: [
-        { displayOrder: 'asc' },
-        { name: 'asc' },
-      ],
+      orderBy: { name: 'asc' },
       select: {
         id: true,
         categoryId: true,
@@ -39,6 +37,35 @@ router.get('/', async function (req, res, next) {
         categories: categories,
         menuItems: menuItems,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/:branchId', async function (req, res, next) {
+  try {
+    var branch = await prisma.branch.findUnique({
+      where: { id: req.params.branchId }
+    });
+
+    if (!branch || branch.status !== 'active') {
+      return res.status(404).json({ message: 'Branch not found or inactive' });
+    }
+
+    var result = await chainService.getBranchMenu(req.params.branchId);
+
+    res.json({
+      data: result,
+      branch: {
+        id: branch.id,
+        name: branch.name,
+        address: branch.address,
+        phone: branch.phone,
+        openTime: branch.openTime,
+        closeTime: branch.closeTime,
+        imageUrl: branch.imageUrl
+      }
     });
   } catch (error) {
     next(error);
