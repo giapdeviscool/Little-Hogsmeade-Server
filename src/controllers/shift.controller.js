@@ -54,11 +54,11 @@ async function requestClosure(req, res, next) {
     const actualCashCounted = parseFloat(req.body.actualCashCounted !== undefined ? req.body.actualCashCounted : req.body.actualCashCount);
 
     if (!shiftId) {
-      return res.status(400).json({ error: 'shiftId is required' });
+      return res.status(400).json({ message: 'shiftId is required' });
     }
 
     if (isNaN(actualCashCounted) || actualCashCounted < 0) {
-      return res.status(400).json({ error: 'Invalid actual cash count' });
+      return res.status(400).json({ message: 'Invalid actual cash count' });
     }
 
     const shift = await prisma.cashierShift.findUnique({
@@ -66,11 +66,11 @@ async function requestClosure(req, res, next) {
     });
 
     if (!shift) {
-      return res.status(404).json({ error: 'Cashier shift not found' });
+      return res.status(404).json({ message: 'Cashier shift not found' });
     }
 
     if (shift.status !== 'OPEN') {
-      return res.status(400).json({ error: 'Shift is not open' });
+      return res.status(400).json({ message: 'Shift is not open' });
     }
 
     // Business Rule BR-52
@@ -157,7 +157,7 @@ async function finalizeClosure(req, res, next) {
     var discrepancy = actualCashCounted - expectedCash;
 
     // Atomic transaction settlement
-    const updatedShift = await prisma.$transaction(async function(tx) {
+    const updatedShift = await prisma.$transaction(async function (tx) {
       // 1. Verify shift is still open
       const shiftDoc = await tx.cashierShift.findUnique({
         where: { id: shiftId }
