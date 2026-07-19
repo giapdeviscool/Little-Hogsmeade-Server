@@ -88,11 +88,17 @@ async function createMenuItem(data, user, fileUrl) {
   var isOwner = roleName.includes('owner');
   var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
 
-  if (isOwner) {
+  // Treat empty string as explicit global request
+  var rawBranchId = data.branchId
+
+  if (rawBranchId === '') {
+    branchId = null
+  } else if (isOwner) {
     // Owner creates for all branches (global) or can specify branchId if needed
-    branchId = data.branchId || null;
+    branchId = rawBranchId || null
   } else if (isAdmin) {
-    branchId = user.branchId;
+    // Admin can create branch-specific items; if no branchId supplied, fall back to user's branch
+    branchId = rawBranchId || user.branchId || null
   } else {
     var errRole = new Error('Không có quyền tạo món ăn');
     errRole.status = 403;
