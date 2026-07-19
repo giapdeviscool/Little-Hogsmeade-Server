@@ -525,13 +525,15 @@ async function resetPin(req, res, next) {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    // Reset PIN state so they can set a new one on next login
+    const hash = await bcrypt.hash('000000', 10);
+
+    // Reset PIN to 000000
     await prisma.customer.update({
       where: { id },
-      data: { passwordHash: null, failedPinAttempts: 0 }
+      data: { passwordHash: hash, failedPinAttempts: 0 }
     });
 
-    res.json({ success: true, message: 'Khôi phục mã PIN thành công. Khách hàng có thể tạo mã PIN mới khi đăng nhập lại.' });
+    res.json({ success: true, message: 'Khôi phục mã PIN thành công. Mã PIN hiện tại là 000000.' });
   } catch (error) {
     next(error);
   }

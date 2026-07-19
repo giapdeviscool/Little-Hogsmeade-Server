@@ -319,6 +319,7 @@ async function getBranchMenu(branchId) {
         isFeatured: j.menuItem.isFeatured,
         itemType: j.menuItem.itemType,
         menuItemVariants: j.menuItem.menuItemVariants || [],
+        menuItemToppingGroups: j.menuItem.menuItemToppingGroups || [],
         isJunction: true
       };
     }),
@@ -334,6 +335,7 @@ async function getBranchMenu(branchId) {
         isFeatured: item.isFeatured,
         itemType: item.itemType,
         menuItemVariants: item.menuItemVariants || [],
+        menuItemToppingGroups: item.menuItemToppingGroups || [],
         isJunction: false
       };
     })

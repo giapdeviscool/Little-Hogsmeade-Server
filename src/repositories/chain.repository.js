@@ -240,7 +240,24 @@ function upsertBranchCategories(branchId, entries) {
 function findBranchMenuItems(branchId) {
   return prisma.branchMenuItem.findMany({
     where: { branchId: branchId },
-    include: { menuItem: true }
+    include: { 
+      menuItem: {
+        include: {
+          menuItemVariants: true,
+          menuItemToppingGroups: {
+            include: {
+              toppingGroup: {
+                include: {
+                  toppings: {
+                    where: { isActive: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }
   });
 }
 
@@ -310,8 +327,21 @@ function findBranchSpecificCategories(branchId) {
 
 function findBranchSpecificMenuItems(branchId) {
   return prisma.menuItem.findMany({
-    where: { branchId: branchId, isActive: true },
-    include: { menuItemVariants: true }
+    where: { branchId: branchId },
+    include: {
+      menuItemVariants: true,
+      menuItemToppingGroups: {
+        include: {
+          toppingGroup: {
+            include: {
+              toppings: {
+                where: { isActive: true },
+              },
+            },
+          },
+        },
+      },
+    },
   });
 }
 
