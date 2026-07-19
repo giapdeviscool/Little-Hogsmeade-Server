@@ -266,8 +266,9 @@ model MenuItemToppingGroup {
 }
 
 model Ingredient {
-  id             String  @id @default(auto()) @map("_id") @db.ObjectId
-  branchId       String  @map("branch_id") @db.ObjectId
+  id                 String  @id @default(auto()) @map("_id") @db.ObjectId
+  branchId           String? @map("branch_id") @db.ObjectId
+  globalIngredientId String? @map("global_ingredient_id") @db.ObjectId
   name           String
   sku            String?
   unit           String
@@ -280,8 +281,9 @@ model Ingredient {
   currentStock   Float   @default(0.00) @map("current_stock")
   isActive       Boolean @default(true) @map("is_active")
 
-  branch Branch @relation("Ingredient_branchId_to_Branch", fields: [branchId], references: [id])
-
+  branch Branch? @relation("Ingredient_branchId_to_Branch", fields: [branchId], references: [id])
+  globalIngredient Ingredient?  @relation("GlobalIngredientToLocal", fields: [globalIngredientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  localIngredients Ingredient[] @relation("GlobalIngredientToLocal")
   recipes            Recipe[]            @relation("Recipe_ingredientId_to_Ingredient")
   stockTransactions  StockTransaction[]  @relation("StockTransaction_ingredientId_to_Ingredient")
   purchaseOrderItems PurchaseOrderItem[] @relation("PurchaseOrderItem_ingredientId_to_Ingredient")

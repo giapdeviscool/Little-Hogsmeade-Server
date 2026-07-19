@@ -173,6 +173,14 @@ async function getDailyProfit(branchId, from, to) {
   });
 
   const dailyMap = {};
+  const localIngredientCache = {};
+  async function getLocalIngredientCost(globalId, bId) {
+    var key = globalId + '-' + bId;
+    if (localIngredientCache[key] !== undefined) return localIngredientCache[key];
+    var loc = await prisma.ingredient.findFirst({ where: { globalIngredientId: globalId, branchId: bId } });
+    localIngredientCache[key] = loc ? (loc.unitCost || 0) : 0;
+    return localIngredientCache[key];
+  }
 
   for (const order of orders) {
     const dateStr = new Date(order.createdAt).toISOString().split('T')[0];
@@ -198,14 +206,24 @@ async function getDailyProfit(branchId, from, to) {
       // MenuItem cost
       if (item.menuItem?.recipes) {
         for (const r of item.menuItem.recipes) {
-          itemCost += (r.quantityRequired * (r.ingredient?.unitCost || 0));
+          if (r.ingredient && r.ingredient.branchId === null) {
+            let locCost = await getLocalIngredientCost(r.ingredientId, order.branchId);
+            itemCost += (r.quantityRequired * locCost);
+          } else {
+            itemCost += (r.quantityRequired * (r.ingredient?.unitCost || 0));
+          }
         }
       }
       
       // Variant cost
       if (item.variant?.recipes) {
         for (const r of item.variant.recipes) {
-          itemCost += (r.quantityRequired * (r.ingredient?.unitCost || 0));
+          if (r.ingredient && r.ingredient.branchId === null) {
+            let locCost = await getLocalIngredientCost(r.ingredientId, order.branchId);
+            itemCost += (r.quantityRequired * locCost);
+          } else {
+            itemCost += (r.quantityRequired * (r.ingredient?.unitCost || 0));
+          }
         }
       }
       

@@ -10,7 +10,14 @@ async function getIngredients(query, user) {
   if (!isOwner) {
     filters.branchId = user.branchId;
   } else if (query.branchId) {
-    filters.branchId = query.branchId;
+    if (query.branchId === 'global') {
+      filters.branchId = null;
+    } else {
+      filters.branchId = query.branchId;
+    }
+  } else {
+    // When Owner views "Tất cả chi nhánh", only show Global Templates
+    filters.branchId = null;
   }
 
   if (query.search) {
@@ -44,7 +51,15 @@ async function createIngredient(data, user) {
     throw errRole;
   }
 
-  var branchId = isOwner && data.branchId ? data.branchId : user.branchId;
+  var scope = data.scope || 'specific';
+  var branchId = null;
+  if (isOwner && scope === 'global') {
+    branchId = null;
+  } else if (isOwner && data.branchId) {
+    branchId = data.branchId;
+  } else {
+    branchId = user.branchId;
+  }
 
   // Validation: Check duplicate name or sku
   var existing = await ingredientRepository.findIngredientByNameOrSku(data.name, data.sku, branchId);
@@ -68,7 +83,33 @@ async function createIngredient(data, user) {
     isActive: true
   };
 
-  return ingredientRepository.createIngredient(createData);
+  var newIngredient = await ingredientRepository.createIngredient(createData);
+
+  if (branchId === null) {
+    var prisma = require('../lib/prisma');
+    var branches = await prisma.branch.findMany({ select: { id: true } });
+    var localCopies = branches.map(function(b) {
+      return {
+        name: newIngredient.name,
+        sku: newIngredient.sku,
+        unit: newIngredient.unit,
+        importUnit: newIngredient.importUnit,
+        conversionRate: newIngredient.conversionRate,
+        category: newIngredient.category,
+        ingredientType: newIngredient.ingredientType,
+        minStockLevel: newIngredient.minStockLevel,
+        currentStock: 0,
+        branchId: b.id,
+        globalIngredientId: newIngredient.id,
+        isActive: true
+      };
+    });
+    if (localCopies.length > 0) {
+      await prisma.ingredient.createMany({ data: localCopies });
+    }
+  }
+
+  return newIngredient;
 }
 
 async function updateIngredient(id, data, user) {
@@ -116,7 +157,22 @@ async function updateIngredient(id, data, user) {
     isActive: data.isActive !== undefined ? data.isActive : existing.isActive
   };
 
-  if (isOwner && data.branchId) {
+  if (isOwner && data.scope) {
+    if (existing.globalIngredientId !== null) {
+      if (data.scope === 'specific') {
+        var errScope = new Error('Đây là bản sao của Nguyên liệu Toàn chuỗi nên không thể chuyển thành Riêng chi nhánh.');
+        errScope.status = 400;
+        throw errScope;
+      }
+      // If data.scope is 'global', we just ignore it because it's already a global component's local copy.
+    } else {
+      if (data.scope === 'global') {
+        updateData.branchId = null;
+      } else if (data.scope === 'specific') {
+        updateData.branchId = data.branchId;
+      }
+    }
+  } else if (isOwner && data.branchId !== undefined) {
     updateData.branchId = data.branchId;
   }
 
@@ -130,7 +186,62 @@ async function updateIngredient(id, data, user) {
     }
   }
 
-  return ingredientRepository.updateIngredient(id, updateData);
+  var updated = await ingredientRepository.updateIngredient(id, updateData);
+
+  if (existing.branchId === null) {
+    var prisma = require('../lib/prisma');
+    var syncData = {};
+    if (updateData.name !== undefined) syncData.name = updateData.name;
+    if (updateData.sku !== undefined) syncData.sku = updateData.sku;
+    if (updateData.unit !== undefined) syncData.unit = updateData.unit;
+    if (updateData.importUnit !== undefined) syncData.importUnit = updateData.importUnit;
+    if (updateData.conversionRate !== undefined) syncData.conversionRate = updateData.conversionRate;
+    if (updateData.category !== undefined) syncData.category = updateData.category;
+    if (updateData.ingredientType !== undefined) syncData.ingredientType = updateData.ingredientType;
+    if (updateData.minStockLevel !== undefined) syncData.minStockLevel = updateData.minStockLevel;
+    if (updateData.isActive !== undefined) syncData.isActive = updateData.isActive;
+    
+    await prisma.ingredient.updateMany({
+      where: { globalIngredientId: id },
+      data: syncData
+    });
+  }
+
+  // Handle scope transition Specific -> Global
+  if (existing.branchId !== null && updateData.branchId === null) {
+    var prisma = require('../lib/prisma');
+    var branches = await prisma.branch.findMany({ select: { id: true } });
+    var localCopies = branches.map(function(b) {
+      return {
+        name: updated.name,
+        sku: updated.sku,
+        unit: updated.unit,
+        importUnit: updated.importUnit,
+        conversionRate: updated.conversionRate,
+        category: updated.category,
+        ingredientType: updated.ingredientType,
+        minStockLevel: updated.minStockLevel,
+        currentStock: 0,
+        branchId: b.id,
+        globalIngredientId: updated.id,
+        isActive: true
+      };
+    });
+    if (localCopies.length > 0) {
+      await prisma.ingredient.createMany({ data: localCopies });
+    }
+  }
+
+  // Handle scope transition Global -> Specific
+  if (existing.branchId === null && updateData.branchId !== null) {
+    var prisma = require('../lib/prisma');
+    await prisma.ingredient.updateMany({
+      where: { globalIngredientId: id },
+      data: { globalIngredientId: null } // Unlink local copies
+    });
+  }
+
+  return updated;
 }
 
 module.exports = {
