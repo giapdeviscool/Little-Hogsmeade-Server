@@ -9,8 +9,9 @@ function sepayAuth(req, res, next) {
     return res.status(401).send('Invalid signature');
   }
 
-  // Construct verification string layout: string_to_sign = timestamp + '.' + JSON.stringify(req.body)
-  var stringToSign = timestamp + '.' + JSON.stringify(req.body);
+  // Construct verification string layout: string_to_sign = timestamp + '.' + rawBody
+  var rawBody = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body);
+  var stringToSign = timestamp + '.' + rawBody;
 
   // Compute HMAC-SHA256 expected signature
   var computedHex = crypto

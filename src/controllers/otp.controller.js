@@ -1,3 +1,4 @@
+var prisma = require('../lib/prisma');
 var otpService = require('../services/otp.service');
 
 async function setup2FA(req, res, next) {
@@ -20,5 +21,5 @@ async function verify2FA(req, res, next) {
 
 module.exports = {
   setup2FA: setup2FA,
-  verify2FA: verify2FA
+  verify2FA: verify2FA,
 };

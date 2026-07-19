@@ -8,15 +8,19 @@ var orderValidator = require('../validators/order.validator');
 
 var router = express.Router();
 
-router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier']));
-
-
+// get noti from web hook => do not add authentication to this api
 // Webhook is public to bank networks, protected via strict SePay HMAC verification
 router.get('/bank-webhook', (req, res) => {
   res.status(200).json({ success: true, message: 'SePay Webhook endpoint is active and listening.' });
 });
+
+
 router.post('/bank-webhook', sepayAuth, paymentWebhookController.handleSePayWebhook);
+
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier']));
+
+
 
 // POS actions require standard employee authentication
 router.post('/qr-intent', authMiddleware.authenticate, validate(orderValidator.qrIntentSchema), paymentController.createQrIntent);
