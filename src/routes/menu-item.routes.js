@@ -37,7 +37,7 @@ router.put('/:id',
 var menuItemToppingController = require('../controllers/menu-item-topping.controller');
 
 // UC69: Assign Topping Groups
-router.get('/:id/topping-groups', authMiddleware.authenticate, authMiddleware.requireChainRole, menuItemToppingController.getMenuItemToppings);
+router.get('/:id/topping-groups', authMiddleware.authenticate, menuItemToppingController.getMenuItemToppings);
 router.put('/:id/topping-groups', authMiddleware.authenticate, authMiddleware.requireChainRole, menuItemToppingController.assignToppingGroups);
 
 var recipeController = require('../controllers/recipe.controller');

@@ -1,6 +1,7 @@
 var crypto = require('crypto');
 var env = require('../config/env');
 var authRepository = require('../repositories/auth.repository');
+var branchRepository = require('../repositories/branch.repository');
 var jwtUtils = require('../utils/jwt');
 
 var TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -110,18 +111,20 @@ async function findAccountByIdentifier(identifier) {
   return null;
 }
 
-function createAuthResponse(accountType, account) {
+async function createAuthResponse(accountType, account) {
   var roleName = account.role ? account.role.name : null;
-
+  // get branch name from database from branchID using fetching from branch repository
+  var branch = await branchRepository.findById(account.branchId);
   return {
     accountType: accountType,
-    user: sanitizeAccount(accountType, account),
+    user: sanitizeAccount(accountType, account, branch?.name || null),
     token: signToken({
       sub: account.id,
       type: accountType,
       phone: account.phone,
       email: account.email || null,
       branchId: account.branchId || null,
+      branchName: branch?.name || null,
       roleId: account.roleId || null,
       roleName: roleName
     })
@@ -167,7 +170,7 @@ function assertValidObjectId(value, fieldName) {
   }
 }
 
-function sanitizeAccount(accountType, account) {
+function sanitizeAccount(accountType, account, branchName) {
   var base = {
     id: account.id,
     accountType: accountType,
@@ -179,6 +182,7 @@ function sanitizeAccount(accountType, account) {
 
   if (accountType === 'employee') {
     base.branchId = account.branchId;
+    base.branchName = branchName || null;
     base.roleId = account.roleId;
     base.roleName = account.role ? account.role.name : null;
     base.status = account.status;

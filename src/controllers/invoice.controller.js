@@ -2,7 +2,7 @@ var invoiceService = require('../services/invoice.service');
 
 async function getInvoices(req, res, next) {
   try {
-    var result = await invoiceService.getInvoices(req.query);
+    var result = await invoiceService.getInvoices(req.query, req.user);
     
     res.status(200).json({
       success: true,
