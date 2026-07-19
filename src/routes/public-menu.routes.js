@@ -7,12 +7,11 @@ var router = express.Router();
 router.get('/', async function (req, res, next) {
   try {
     var categories = await prisma.category.findMany({
-      where: { branchId: null, isActive: true },
+      where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
       select: {
         id: true,
         name: true,
-        icon: true,
         displayOrder: true,
       },
     });
@@ -144,7 +143,7 @@ router.get('/:branchId', async function (req, res, next) {
 
     // Categories are global — only null branchId (no old branch copies)
     var categories = await prisma.category.findMany({
-      where: { branchId: null, isActive: true },
+      where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
       select: { id: true, name: true, displayOrder: true }
     });
