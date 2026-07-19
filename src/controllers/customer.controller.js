@@ -310,6 +310,13 @@ async function checkPhoneAuth(req, res, next) {
       });
     }
 
+    if (customer.failedPinAttempts >= 5) {
+      return res.json({
+        status: 'locked',
+        customer: { id: customer.id, fullName: customer.fullName }
+      });
+    }
+
     return res.json({ 
       status: 'has_pin', 
       customer: { id: customer.id, fullName: customer.fullName } 
@@ -339,6 +346,7 @@ async function customerLogin(req, res, next) {
           phone: trimmedPhone,
           fullName: fullName || 'Khách vãng lai',
           passwordHash: hash,
+          failedPinAttempts: 0,
           source: 'customer-app'
         }
       });
@@ -357,18 +365,39 @@ async function customerLogin(req, res, next) {
         });
       }
     } else {
+      if (customer.failedPinAttempts >= 5) {
+        return res.status(403).json({ message: 'Tài khoản của bạn đã bị khóa mã PIN do nhập sai quá 5 lần. Vui lòng đến cửa hàng để được hỗ trợ cấp lại mã.' });
+      }
+
       if (!customer.passwordHash) {
         // Set PIN for existing customer
         const hash = await bcrypt.hash(pin, 10);
         customer = await prisma.customer.update({
           where: { id: customer.id },
-          data: { passwordHash: hash }
+          data: { passwordHash: hash, failedPinAttempts: 0 }
         });
       } else {
         // Verify PIN
         const isValid = await bcrypt.compare(pin, customer.passwordHash);
         if (!isValid) {
-          return res.status(401).json({ message: 'Mã PIN không đúng' });
+          const updatedCustomer = await prisma.customer.update({
+            where: { id: customer.id },
+            data: { failedPinAttempts: customer.failedPinAttempts + 1 }
+          });
+          
+          if (updatedCustomer.failedPinAttempts >= 5) {
+            return res.status(403).json({ message: 'Tài khoản của bạn đã bị khóa mã PIN do nhập sai quá 5 lần. Vui lòng đến cửa hàng để được hỗ trợ cấp lại mã.' });
+          }
+          
+          return res.status(401).json({ message: `Mã PIN không đúng. Bạn còn ${5 - updatedCustomer.failedPinAttempts} lần nhập.` });
+        }
+        
+        // Reset failed attempts on success
+        if (customer.failedPinAttempts > 0) {
+          await prisma.customer.update({
+            where: { id: customer.id },
+            data: { failedPinAttempts: 0 }
+          });
         }
       }
     }
@@ -433,6 +462,83 @@ async function updateCustomerMembership(req, res, next) {
   }
 }
 
+async function changePin(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { oldPin, newPin } = req.body;
+
+    if (!oldPin || !newPin) {
+      return res.status(400).json({ message: 'Old PIN and New PIN are required' });
+    }
+
+    const customer = await prisma.customer.findUnique({
+      where: { id }
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    if (customer.failedPinAttempts >= 5) {
+      return res.status(403).json({ message: 'Tài khoản đã bị khóa PIN, không thể đổi PIN.' });
+    }
+
+    const isValid = await bcrypt.compare(oldPin, customer.passwordHash || '');
+    if (!isValid) {
+      const updatedCustomer = await prisma.customer.update({
+        where: { id },
+        data: { failedPinAttempts: customer.failedPinAttempts + 1 }
+      });
+      
+      if (updatedCustomer.failedPinAttempts >= 5) {
+        return res.status(403).json({ message: 'Tài khoản của bạn đã bị khóa mã PIN do nhập sai quá 5 lần. Vui lòng đến cửa hàng để được hỗ trợ cấp lại mã.' });
+      }
+      return res.status(401).json({ message: `Mã PIN cũ không đúng. Bạn còn ${5 - updatedCustomer.failedPinAttempts} lần nhập.` });
+    }
+
+    const hash = await bcrypt.hash(newPin, 10);
+    await prisma.customer.update({
+      where: { id },
+      data: { passwordHash: hash, failedPinAttempts: 0 }
+    });
+
+    res.json({ success: true, message: 'Đổi mã PIN thành công' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function resetPin(req, res, next) {
+  try {
+    // Only employees/admins should call this
+    if (!req.user || req.user.type !== 'employee') {
+      return res.status(403).json({ message: 'Employee access is required' });
+    }
+
+    const { id } = req.params;
+
+    const customer = await prisma.customer.findUnique({
+      where: { id }
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    const hash = await bcrypt.hash('000000', 10);
+
+    // Reset PIN to 000000
+    await prisma.customer.update({
+      where: { id },
+      data: { passwordHash: hash, failedPinAttempts: 0 }
+    });
+
+    res.json({ success: true, message: 'Khôi phục mã PIN thành công. Mã PIN hiện tại là 000000.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   listCustomers: listCustomers,
   getCustomerById: getCustomerById,
@@ -443,6 +549,8 @@ module.exports = {
   redeemLoyaltyReward: redeemLoyaltyReward,
   checkPhoneAuth: checkPhoneAuth,
   customerLogin: customerLogin,
-  updateCustomerMembership: updateCustomerMembership
+  updateCustomerMembership: updateCustomerMembership,
+  changePin: changePin,
+  resetPin: resetPin
 };
 
