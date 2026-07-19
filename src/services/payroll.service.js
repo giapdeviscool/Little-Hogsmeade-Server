@@ -126,6 +126,7 @@ function calculatePayrollSummaries(employees, timesheets) {
       branchId: emp.branchId,
       branchName: emp.branch ? emp.branch.name : null,
       roleName: emp.role ? emp.role.name : null,
+      employeeType: emp.employeeType || 'full_time',
       baseSalary: baseSalary,
       totalWorkedHours: Math.round(totalWorkedHours * 100) / 100,
       totalDays: totalDays,

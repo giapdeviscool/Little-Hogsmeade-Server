@@ -43,7 +43,7 @@ class StockConversionService {
 
     for (const req of rawRequirements) {
       if (req.currentStock < req.requiredStock) {
-        const error = new Error(`Insufficient stock for ${req.rawIngredientName}. Need ${req.requiredStock}, have ${req.currentStock}`);
+        const error = new Error(`Không đủ số lượng tồn kho cho ${req.rawIngredientName}. Cần ${req.requiredStock}, hiện có ${req.currentStock}`);
         error.statusCode = 400;
         throw error;
       }
