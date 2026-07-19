@@ -30,15 +30,16 @@ var adminRoutes = require("./admin.routes");
 var deliveryRoutes = require("./delivery.routes");
 var deliveryController = require("../controllers/delivery.controller");
 var authMiddleware = require("../middlewares/auth.middleware");
-var preparationRoutes = require("./preparation.routes");
-var stockConversionRoutes = require("./stock-conversion.routes");
 var cashierShiftRoutes = require("./cashier-shift.routes");
 var paymentRoutes = require("./payment.routes");
 var otpRoutes = require("./otp.routes");
 var publicMenuRoutes = require("./public-menu.routes");
+var voucherRoutes = require("./voucher.routes");
 var branchMenuRoutes = require("./branch-menu.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
+var expenseRoutes = require("./expense.routes");
+var financeRoutes = require("./finance.routes");
 var router = express.Router();
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
@@ -73,10 +74,16 @@ router.use("/customers", customerRoutes);
 router.use("/admin", adminRoutes);
 router.use("/delivery/orders", deliveryRoutes);
 router.post("/pos/orders/delivery", authMiddleware.authenticate, deliveryController.createDeliveryOrder);
-router.use("/preparations", preparationRoutes);
-router.use("/stock-conversions", stockConversionRoutes);
+router.use("/expenses", expenseRoutes);
+router.use("/finance", financeRoutes);
+var stockTransactionRoutes = require("./stock-transaction.routes");
+var stocktakeRoutes = require("./stocktake.routes");
+
 router.use("/otp", otpRoutes);
 router.use("/public/menu", publicMenuRoutes);
+router.use("/stock-transactions", stockTransactionRoutes);
+router.use("/stocktakes", stocktakeRoutes);
+router.use("/vouchers", voucherRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({
@@ -100,7 +107,8 @@ resourcesConfig.getResources().forEach(function (resource) {
     "categories",
     "topping_groups",
     "ingredients",
-    "customers"
+    "customers",
+    "stock_transactions"
   ];
   if (excludedResources.includes(resource.name)) {
     return;
