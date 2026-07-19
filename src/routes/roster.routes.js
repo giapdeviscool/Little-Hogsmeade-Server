@@ -5,6 +5,10 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+
+
+router.use(authMiddleware.authenticate);
 
 // UC60: GET is accessible by all authenticated roles (Staff/Cashier see only their own via service layer)
 router.get('/', rosterController.getRosters);

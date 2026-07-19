@@ -6,14 +6,18 @@ var imageUploadMiddleware = require('../middlewares/image-upload.middleware');
 
 var router = express.Router();
 
+router.use(authMiddleware.authenticate);
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'cashier']));
+
+
 // UC65: View Menu Items
 router.get('/', authMiddleware.authenticate, menuItemController.getMenuItems);
 
 // UC66: Add Menu Items
-router.post('/', 
-  authMiddleware.authenticate, 
-  authMiddleware.requireChainRole, 
-  imageUploadMiddleware.singleImage('image'), 
+router.post('/',
+  authMiddleware.authenticate,
+  authMiddleware.requireChainRole,
+  imageUploadMiddleware.singleImage('image'),
   menuItemController.createMenuItem
 );
 // UC67: Update item status
@@ -23,10 +27,10 @@ router.patch('/:id/status', authMiddleware.authenticate, menuItemController.upda
 router.patch('/move-category', authMiddleware.authenticate, authMiddleware.requireChainRole, menuItemController.moveItemsToCategory);
 
 // Update item details
-router.put('/:id', 
-  authMiddleware.authenticate, 
-  authMiddleware.requireChainRole, 
-  imageUploadMiddleware.singleImage('image'), 
+router.put('/:id',
+  authMiddleware.authenticate,
+  authMiddleware.requireChainRole,
+  imageUploadMiddleware.singleImage('image'),
   menuItemController.updateMenuItem
 );
 
