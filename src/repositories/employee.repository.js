@@ -11,6 +11,7 @@ var EMPLOYEE_SELECT = {
   hiredDate: true,
   baseSalary: true,
   status: true,
+  employeeType: true,
   // pinCode: EXCLUDED (BR-HR03)
   // passwordHash: EXCLUDED (BR-HR03)
   role: {

@@ -46,6 +46,9 @@ model Branch {
   toppingGroups     ToppingGroup[]     @relation("ToppingGroup_branchId_to_Branch")
   cashierShifts     CashierShift[]     @relation("CashierShift_branchId_to_Branch")
   stocktakeNotes    StocktakeNote[]    @relation("StocktakeNote_branchId_to_Branch")
+  costEntries         CostEntry[]          @relation("CostEntry_branchId_to_Branch")
+  financialSnapshots  FinancialSnapshot[]  @relation("FinancialSnapshot_branchId_to_Branch")
+  expenseCategories   ExpenseCategory[]    @relation("ExpenseCategory_branchId_to_Branch")
 
   @@map("branches")
 }
@@ -90,6 +93,7 @@ model Employee {
   email        String?
   avatarUrl    String?  @map("avatar_url")
   roleId       String   @map("role_id") @db.ObjectId
+  employeeType String   @default("full_time") @map("employee_type")
   hiredDate    DateTime @map("hired_date")
   baseSalary   Float?   @map("base_salary")
   status       String   @default("active")
@@ -240,6 +244,7 @@ model Topping {
   toppingGroupId String  @map("topping_group_id") @db.ObjectId
   name           String
   extraPrice     Float   @default(0.00) @map("extra_price")
+  baseCost       Float   @default(0.00) @map("base_cost")
   isActive       Boolean @default(true) @map("is_active")
 
   toppingGroup ToppingGroup @relation("Topping_toppingGroupId_to_ToppingGroup", fields: [toppingGroupId], references: [id])
@@ -269,6 +274,7 @@ model Ingredient {
   unit           String
   importUnit     String? @map("import_unit")
   conversionRate Float?  @default(1.0) @map("conversion_rate")
+  unitCost       Float   @default(0.00) @map("unit_cost")
   category       String?
   ingredientType String @default("raw") @map("ingredient_type") // "raw" | "preparation"
   minStockLevel  Float   @default(0.00) @map("min_stock_level")
@@ -631,12 +637,62 @@ model PurchaseOrderItem {
 }
 
 model ExpenseCategory {
-  id   String @id @default(auto()) @map("_id") @db.ObjectId
-  name String @unique
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  costType  String   @default("VARIABLE") @map("cost_type") // "FIXED" | "VARIABLE" | "SEMI_VARIABLE"
+  isSystem  Boolean  @default(false) @map("is_system")
+  branchId  String?  @map("branch_id") @db.ObjectId // null = toàn chuỗi
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  expenses Expense[] @relation("Expense_expenseCategoryId_to_ExpenseCategory")
+  // Backward compat: keep old "type" field mapped to costType
+  // Existing data with "fixed"/"variable" will need migration
+
+  branch      Branch?     @relation("ExpenseCategory_branchId_to_Branch", fields: [branchId], references: [id])
+  expenses    Expense[]   @relation("Expense_expenseCategoryId_to_ExpenseCategory")
+  costEntries CostEntry[] @relation("CostEntry_categoryId_to_ExpenseCategory")
 
   @@map("expense_categories")
+}
+
+model CostEntry {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  categoryId       String   @map("category_id") @db.ObjectId
+  branchId         String   @map("branch_id") @db.ObjectId
+  amount           Float
+  percentOfRevenue Float?   @map("percent_of_revenue")
+  frequency        String   @default("MONTHLY") // "ONE_TIME" | "DAILY" | "MONTHLY" | "YEARLY"
+  periodStart      DateTime @map("period_start")
+  periodEnd        DateTime? @map("period_end")
+  note             String?
+  sourceVoucherId  String?  @map("source_voucher_id")
+  createdBy        String   @map("created_by") @db.ObjectId
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  category ExpenseCategory @relation("CostEntry_categoryId_to_ExpenseCategory", fields: [categoryId], references: [id])
+  branch   Branch          @relation("CostEntry_branchId_to_Branch", fields: [branchId], references: [id])
+
+  @@map("cost_entries")
+}
+
+model FinancialSnapshot {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  branchId          String?  @map("branch_id") @db.ObjectId // null = toàn chuỗi
+  periodStart       DateTime @map("period_start")
+  periodEnd         DateTime @map("period_end")
+  totalRevenue      Float    @map("total_revenue")
+  totalFixedCost    Float    @map("total_fixed_cost")
+  totalVariableCost Float    @map("total_variable_cost")
+  cogs              Float
+  grossProfit       Float    @map("gross_profit")
+  netProfit         Float    @map("net_profit")
+  breakEvenRevenue  Float    @map("break_even_revenue")
+  generatedAt       DateTime @default(now()) @map("generated_at")
+
+  branch Branch? @relation("FinancialSnapshot_branchId_to_Branch", fields: [branchId], references: [id])
+
+  @@map("financial_snapshots")
 }
 
 model Expense {

@@ -6,34 +6,44 @@ async function createStocktakeNote(payload, currentUser) {
   var items = payload.items; // Array of { ingredientId, systemQuantity, actualQuantity, variance, reason, note }
   var note = payload.note;
 
-  if (!branchId) {
-    throwHttpError(400, 'branchId is required');
-  }
-
+  if (!branchId) throwHttpError(400, 'Mã chi nhánh (branchId) là bắt buộc');
   if (!items || !Array.isArray(items) || items.length === 0) {
-    throwHttpError(400, 'items array is required and cannot be empty');
+    throwHttpError(400, 'Danh sách nguyên liệu kiểm kho không hợp lệ hoặc trống');
   }
 
   // Verify branch jurisdiction
   if (!authMiddleware.isOwner(currentUser)) {
     if (currentUser.branchId !== branchId) {
-      throwHttpError(403, 'You do not have permission to manage stocktake for this branch');
-    }
-  }
-
-  // Validate items
-  for (var i = 0; i < items.length; i++) {
-    var item = items[i];
-    if (!item.ingredientId || item.systemQuantity === undefined || item.actualQuantity === undefined) {
-      throwHttpError(400, 'Invalid item data at index ' + i);
-    }
-    if (item.actualQuantity < 0) {
-      throwHttpError(400, 'Actual quantity cannot be negative for item index ' + i);
+      throwHttpError(403, 'Bạn không có quyền quản lý tồn kho cho chi nhánh này');
     }
   }
 
   // Create Stocktake Note and Items in a transaction
   var result = await prisma.$transaction(async (tx) => {
+    // Validate items
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (!item.ingredientId || typeof item.systemQuantity !== 'number' || typeof item.actualQuantity !== 'number') {
+        throwHttpError(400, 'Dữ liệu kiểm kho không hợp lệ: Thiếu ingredientId, systemQuantity hoặc actualQuantity');
+      }
+
+      var ingredient = await tx.ingredient.findUnique({
+        where: { id: item.ingredientId }
+      });
+
+      if (!ingredient) {
+        throwHttpError(404, 'Không tìm thấy nguyên liệu: ' + item.ingredientId);
+      }
+
+      if (ingredient.branchId !== branchId) {
+        throwHttpError(400, 'Nguyên liệu không thuộc chi nhánh này: ' + item.ingredientId);
+      }
+      
+      if (item.actualQuantity < 0) {
+        throwHttpError(400, 'Số lượng thực tế không được âm tại vị trí: ' + i);
+      }
+    }
+
     var stocktakeNote = await tx.stocktakeNote.create({
       data: {
         branchId: branchId,
@@ -63,10 +73,10 @@ async function createStocktakeNote(payload, currentUser) {
 }
 
 async function getPendingStocktakes(branchId, currentUser) {
-  if (!branchId) throwHttpError(400, 'branchId is required');
+  if (!branchId) throwHttpError(400, 'Mã chi nhánh (branchId) là bắt buộc');
   
   if (!authMiddleware.isOwner(currentUser) && currentUser.branchId !== branchId) {
-    throwHttpError(403, 'You do not have permission to view stocktakes for this branch');
+    throwHttpError(403, 'Bạn không có quyền xem phiếu kiểm kho của chi nhánh này');
   }
 
   var notes = await prisma.stocktakeNote.findMany({
@@ -93,9 +103,9 @@ async function getPendingStocktakes(branchId, currentUser) {
 }
 
 async function processStocktake(noteId, action, currentUser) {
-  if (!noteId) throwHttpError(400, 'noteId is required');
+  if (!noteId) throwHttpError(400, 'Mã phiếu kiểm kho (noteId) là bắt buộc');
   if (action !== 'APPROVE' && action !== 'REJECT') {
-    throwHttpError(400, 'action must be APPROVE or REJECT');
+    throwHttpError(400, 'Hành động (action) phải là APPROVE hoặc REJECT');
   }
 
   var note = await prisma.stocktakeNote.findUnique({
@@ -103,22 +113,22 @@ async function processStocktake(noteId, action, currentUser) {
     include: { items: true }
   });
 
-  if (!note) throwHttpError(404, 'Stocktake note not found');
+  if (!note) throwHttpError(404, 'Không tìm thấy phiếu kiểm kho');
 
   if (note.status !== 'PENDING') {
-    throwHttpError(400, 'Stocktake note is already ' + note.status);
+    throwHttpError(400, 'Phiếu kiểm kho đã được xử lý (trạng thái: ' + note.status + ')');
   }
 
   // Verify jurisdiction and role
-  if (!authMiddleware.isOwner(currentUser)) {
-    // Only Chain Admin / Owner can process (BR-INV20)
-    var roleName = currentUser.roleName || (currentUser.role && currentUser.role.name) || '';
-    var isChainAdmin = roleName === 'Chain Admin' || roleName === 'Admin' || roleName === 'Manager';
+  var isOwner = authMiddleware.isOwner(currentUser);
+  var isChainAdmin = authMiddleware.isChainAdmin(currentUser);
+
+  if (!isOwner) {
     if (!isChainAdmin) {
-      throwHttpError(403, 'Only Owner or Chain Admin can process stocktake notes');
+      throwHttpError(403, 'Chỉ Chủ cửa hàng (Owner) hoặc Quản lý chuỗi (Chain Admin) mới có quyền duyệt phiếu kiểm kho');
     }
     if (currentUser.branchId !== note.branchId) {
-      throwHttpError(403, 'You do not have permission for this branch');
+      throwHttpError(403, 'Bạn không có quyền thao tác trên chi nhánh này');
     }
   }
 

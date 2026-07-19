@@ -74,12 +74,13 @@ function buildWhereFilter(query, currentUser) {
     where.roleId = query.roleId;
   }
 
-  // Search by name
+  // Search by name or phone
   if (query.search) {
-    where.fullName = {
-      contains: String(query.search).trim(),
-      mode: 'insensitive'
-    };
+    var searchStr = String(query.search).trim();
+    where.OR = [
+      { fullName: { contains: searchStr, mode: 'insensitive' } },
+      { phone: { contains: searchStr } }
+    ];
   }
 
   return where;
