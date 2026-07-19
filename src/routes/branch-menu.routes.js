@@ -11,9 +11,9 @@ router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
 router.get('/:branchId/menu', async function(req, res, next) {
   try {
     var categories = await prisma.category.findMany({
-      where: { isActive: true },
+      where: { branchId: null, isActive: true },
       orderBy: { displayOrder: 'asc' },
-      select: { id: true, name: true, icon: true, displayOrder: true, isActive: true }
+      select: { id: true, name: true, displayOrder: true, isActive: true }
     });
 
     // Global items + items riêng của branch

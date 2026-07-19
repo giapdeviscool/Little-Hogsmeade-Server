@@ -23,16 +23,13 @@ async function countCategories(filters) {
   });
 }
 
-async function findCategoryByName(name, branchId, excludeId) {
+async function findCategoryByName(name, _branchId, excludeId) {
   var where = {
     name: {
       equals: name,
       mode: 'insensitive'
     }
   };
-  if (branchId !== undefined) {
-    where.branchId = branchId;
-  }
   if (excludeId) {
     where.id = { not: excludeId };
   }
@@ -67,17 +64,16 @@ async function swapDisplayOrder(categoryId, direction) {
   var category = await prisma.category.findUnique({ where: { id: categoryId } });
   if (!category) return null;
 
-  var filter = { branchId: category.branchId };
   var neighbor;
 
   if (direction === 'up') {
     neighbor = await prisma.category.findFirst({
-      where: { ...filter, displayOrder: { lt: category.displayOrder } },
+      where: { displayOrder: { lt: category.displayOrder } },
       orderBy: { displayOrder: 'desc' }
     });
   } else {
     neighbor = await prisma.category.findFirst({
-      where: { ...filter, displayOrder: { gt: category.displayOrder } },
+      where: { displayOrder: { gt: category.displayOrder } },
       orderBy: { displayOrder: 'asc' }
     });
   }
