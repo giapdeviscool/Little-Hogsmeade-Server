@@ -23,6 +23,14 @@ class PreparationService {
       error.statusCode = 403;
       throw error;
     }
+
+    if (preparation.globalIngredientId !== null) {
+      const globalPrep = await preparationRepo.getPreparationRecipeById(preparation.globalIngredientId);
+      if (globalPrep) {
+        preparation.preparationIngredients = globalPrep.preparationIngredients || [];
+      }
+    }
+
     return preparation;
   }
 
@@ -36,6 +44,12 @@ class PreparationService {
     if (preparation.branchId !== user.branchId && !isOwner(user)) {
       const error = new Error('Forbidden');
       error.statusCode = 403;
+      throw error;
+    }
+
+    if (preparation.globalIngredientId !== null) {
+      const error = new Error('Không thể cấu hình BOM cho bản sao của Nguyên liệu Toàn chuỗi. Vui lòng chọn "Tất cả chi nhánh" để cấu hình cho nguyên liệu gốc.');
+      error.statusCode = 400;
       throw error;
     }
     if (preparation.ingredientType !== 'preparation') {
