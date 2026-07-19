@@ -92,7 +92,7 @@ async function exportDashboard(query) {
 
   const rawStart = dashboard?.filters?.startDate ? String(dashboard.filters.startDate).substring(0, 10) : 'start';
   const rawEnd = dashboard?.filters?.endDate ? String(dashboard.filters.endDate).substring(0, 10) : 'end';
-  
+
   const cleanStart = rawStart.replace(/[^a-zA-Z0-9-]/g, '');
   const cleanEnd = rawEnd.replace(/[^a-zA-Z0-9-]/g, '');
 
@@ -175,7 +175,7 @@ async function updatePricing(payload, user) {
   var branches = targetBranchIds.length > 0
     ? await branchRepository.findAll({ where: { id: { in: targetBranchIds }, status: 'active' } })
     : await branchRepository.findAll({ where: { status: 'active' } });
-  var activeBranchIds = branches.map(function(branch) {
+  var activeBranchIds = branches.map(function (branch) {
     return branch.id;
   });
   var updatedBranches = await chainRepository.updateBranchMenuItemPrices(standardItem.name, basePrice, activeBranchIds);
@@ -224,7 +224,7 @@ async function getPromotions(query) {
     take: limit,
     orderBy: { startDate: 'desc' }
   });
-  
+
   var total = await chainRepository.countVouchers(where);
 
   return {
@@ -269,6 +269,111 @@ async function getMenuSyncPreview() {
   };
 }
 
+async function getBranchMenu(branchId) {
+  var branchCategories = await chainRepository.findBranchCategories(branchId);
+  var branchMenuItems = await chainRepository.findBranchMenuItems(branchId);
+  var branchSpecificCategories = await chainRepository.findBranchSpecificCategories(branchId);
+  var branchSpecificMenuItems = await chainRepository.findBranchSpecificMenuItems(branchId);
+
+  var mergedCategories = [].concat(
+    branchCategories.map(function (j) {
+      return {
+        id: j.category.id,
+        name: j.category.name,
+        icon: j.category.icon,
+        displayOrder: j.displayOrder !== null ? j.displayOrder : j.category.displayOrder,
+        isActive: j.isActive,
+        isJunction: true
+      };
+    }),
+    branchSpecificCategories.map(function (cat) {
+      return {
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+        displayOrder: cat.displayOrder,
+        isActive: cat.isActive,
+        isJunction: false
+      };
+    })
+  );
+
+  var mergedMenuItems = [].concat(
+    branchMenuItems.map(function (j) {
+      return {
+        id: j.menuItem.id,
+        name: j.menuItem.name,
+        description: j.menuItem.description,
+        imageUrl: j.menuItem.imageUrl,
+        basePrice: j.basePrice !== null ? j.basePrice : j.menuItem.basePrice,
+        categoryId: j.menuItem.categoryId,
+        isActive: j.isActive,
+        isFeatured: j.menuItem.isFeatured,
+        itemType: j.menuItem.itemType,
+        menuItemVariants: j.menuItem.menuItemVariants || [],
+        menuItemToppingGroups: j.menuItem.menuItemToppingGroups || [],
+        isJunction: true
+      };
+    }),
+    branchSpecificMenuItems.map(function (item) {
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        imageUrl: item.imageUrl,
+        basePrice: item.basePrice,
+        categoryId: item.categoryId,
+        isActive: item.isActive,
+        isFeatured: item.isFeatured,
+        itemType: item.itemType,
+        menuItemVariants: item.menuItemVariants || [],
+        menuItemToppingGroups: item.menuItemToppingGroups || [],
+        isJunction: false
+      };
+    })
+  );
+
+  return {
+    categories: mergedCategories,
+    menuItems: mergedMenuItems
+  };
+}
+
+async function updateBranchMenuCategories(branchId, payload) {
+  assertValidObjectId(branchId, 'branchId');
+
+  var entries = payload.entries || [];
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throwHttpError(400, 'entries must be a non-empty array');
+  }
+
+  for (var i = 0; i < entries.length; i += 1) {
+    assertValidObjectId(entries[i].categoryId, 'entries[' + i + '].categoryId');
+  }
+
+  var updated = await chainRepository.upsertBranchCategories(branchId, entries);
+
+  return { updated: updated };
+}
+
+async function updateBranchMenuItems(branchId, payload) {
+  assertValidObjectId(branchId, 'branchId');
+
+  var entries = payload.entries || [];
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throwHttpError(400, 'entries must be a non-empty array');
+  }
+
+  for (var i = 0; i < entries.length; i += 1) {
+    assertValidObjectId(entries[i].menuItemId, 'entries[' + i + '].menuItemId');
+  }
+
+  var updated = await chainRepository.upsertBranchMenuItems(branchId, entries);
+
+  return { updated: updated };
+}
 
 async function assertLocalPricingAllowed(branchId) {
   if (!branchId) {
@@ -307,7 +412,7 @@ function normalizePromotionPayload(payload) {
 
   var minOrderValue = Number(payload.minOrderValue) || 0;
   var maxUses = Number(payload.maxUses) || 100;
-  
+
   var requiresCode = payload.requiresCode !== undefined ? Boolean(payload.requiresCode) : true;
   var code = requiresCode && payload.code ? String(payload.code).trim() : null;
 
@@ -353,12 +458,12 @@ function parseDateRange(startDateValue, endDateValue) {
 function buildRevenueSeries(invoices) {
   var buckets = {};
 
-  invoices.forEach(function(invoice) {
+  invoices.forEach(function (invoice) {
     var key = invoice.createdAt.toISOString().slice(0, 10);
     buckets[key] = (buckets[key] || 0) + invoice.totalAmount;
   });
 
-  return Object.keys(buckets).sort().map(function(date) {
+  return Object.keys(buckets).sort().map(function (date) {
     return {
       date: date,
       revenue: buckets[date]
@@ -371,7 +476,7 @@ function buildBranchPerformance(invoices, expensesByBranch, branches) {
   var branchNames = buildBranchNameMap(branches);
   var expenseMap = buildExpenseMap(expensesByBranch);
 
-  invoices.forEach(function(invoice) {
+  invoices.forEach(function (invoice) {
     var branch = invoice.order && invoice.order.branch;
     var branchId = branch ? branch.id : 'unknown';
 
@@ -389,7 +494,7 @@ function buildBranchPerformance(invoices, expensesByBranch, branches) {
     buckets[branchId].orders += 1;
   });
 
-  Object.keys(expenseMap).forEach(function(branchId) {
+  Object.keys(expenseMap).forEach(function (branchId) {
     if (!buckets[branchId]) {
       buckets[branchId] = {
         branchId: branchId,
@@ -401,10 +506,10 @@ function buildBranchPerformance(invoices, expensesByBranch, branches) {
     }
   });
 
-  return Object.keys(buckets).map(function(branchId) {
+  return Object.keys(buckets).map(function (branchId) {
     buckets[branchId].grossProfit = buckets[branchId].revenue - (expenseMap[branchId] || 0);
     return buckets[branchId];
-  }).sort(function(a, b) {
+  }).sort(function (a, b) {
     return b.revenue - a.revenue;
   });
 }
@@ -413,15 +518,15 @@ function buildLowStockAlerts(lowStockCounts, branches) {
   var branchNames = buildBranchNameMap(branches);
   var countMap = {};
 
-  lowStockCounts.forEach(function(item) {
+  lowStockCounts.forEach(function (item) {
     countMap[normalizeRawObjectId(item._id)] = item.count || 0;
   });
 
-  var alertBranchIds = Object.keys(countMap).filter(function(branchId) {
+  var alertBranchIds = Object.keys(countMap).filter(function (branchId) {
     return countMap[branchId] > 0;
   });
 
-  var result = alertBranchIds.map(function(branchId) {
+  var result = alertBranchIds.map(function (branchId) {
     return {
       branchId: branchId,
       branchName: branchNames[branchId] || 'Unknown branch',
@@ -435,7 +540,7 @@ function buildLowStockAlerts(lowStockCounts, branches) {
 function buildBranchNameMap(branches) {
   var branchNames = {};
 
-  branches.forEach(function(branch) {
+  branches.forEach(function (branch) {
     branchNames[branch.id] = branch.name;
   });
 
@@ -445,7 +550,7 @@ function buildBranchNameMap(branches) {
 function buildExpenseMap(expensesByBranch) {
   var expenseMap = {};
 
-  expensesByBranch.forEach(function(item) {
+  expensesByBranch.forEach(function (item) {
     expenseMap[item.branchId] = item._sum.amount || 0;
   });
 
@@ -477,7 +582,7 @@ function dateToFilePart(value) {
 }
 
 function sumInvoices(invoices) {
-  return invoices.reduce(function(total, invoice) {
+  return invoices.reduce(function (total, invoice) {
     return total + invoice.totalAmount;
   }, 0);
 }
@@ -552,5 +657,8 @@ module.exports = {
   updatePromotion: updatePromotion,
   togglePromotionStatus: togglePromotionStatus,
   deletePromotion: deletePromotion,
-  getMenuSyncPreview: getMenuSyncPreview
+  getMenuSyncPreview: getMenuSyncPreview,
+  getBranchMenu: getBranchMenu,
+  updateBranchMenuCategories: updateBranchMenuCategories,
+  updateBranchMenuItems: updateBranchMenuItems
 };

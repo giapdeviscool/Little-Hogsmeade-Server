@@ -366,6 +366,7 @@ async function getCustomerDetail(customerId, user) {
     id: customer.id,
     full_name: customer.fullName,
     phone: phone,
+    raw_phone: customer.phone,
     email: customer.email || null,
     gender: customer.gender || "MALE",
     dob: dob,

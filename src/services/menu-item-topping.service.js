@@ -3,7 +3,7 @@ var toppingGroupRepository = require('../repositories/topping-group.repository')
 
 async function getMenuItemToppings(menuItemId, user) {
   var roleName = (user.roleName || '').trim().toLowerCase();
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
   var isCashier = roleName.includes('cashier');
   
   var branchId = null;
@@ -13,7 +13,15 @@ async function getMenuItemToppings(menuItemId, user) {
 
   var toppingGroups = await toppingGroupRepository.findToppingGroups(branchId);
   var assignments = await menuItemRepository.findCurrentToppingGroupAssignments(menuItemId);
-  var assignedSet = new Set(assignments.map(function(a) { return a.toppingGroupId; }));
+  var assignedSet = new Set(assignments.map(function(a) { return String(a.toppingGroupId); }));
+
+  console.log('[DEBUG] getMenuItemToppings:', {
+    menuItemId: menuItemId,
+    assignmentsCount: assignments.length,
+    assignments: assignments,
+    toppingGroupsCount: toppingGroups.length,
+    assignedSet: Array.from(assignedSet)
+  });
 
   return toppingGroups.map(function(tg) {
     return {
@@ -22,14 +30,15 @@ async function getMenuItemToppings(menuItemId, user) {
       minSelect: tg.minSelect,
       maxSelect: tg.maxSelect,
       toppingsCount: tg.toppings ? tg.toppings.length : 0,
-      isAssigned: assignedSet.has(tg.id)
+      isAssigned: assignedSet.has(String(tg.id)),
+      toppings: tg.toppings || []
     };
   });
 }
 
 async function assignToppingGroups(menuItemId, toppingGroupIds, user) {
   var roleName = (user.roleName || '').trim().toLowerCase();
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
   
   var menuItem = await menuItemRepository.findMenuItemById(menuItemId);
   if (!menuItem) {

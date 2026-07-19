@@ -1,6 +1,7 @@
 var invoiceRepository = require('../repositories/invoice.repository');
+var cashierShiftRepository = require('../repositories/cashier-shift.repository');
 
-async function getInvoices(query) {
+async function getInvoices(query, user) {
   var page = parseInt(query.page, 10) || 1;
   var limit = parseInt(query.limit, 10) || 20;
   var skip = (page - 1) * limit;
@@ -16,6 +17,37 @@ async function getInvoices(query) {
     minAmount: query.minAmount !== undefined ? parseFloat(query.minAmount) : undefined,
     maxAmount: query.maxAmount !== undefined ? parseFloat(query.maxAmount) : undefined
   };
+
+  var roleName = (user && user.roleName || '').trim().toLowerCase();
+  var isOwner = roleName.indexOf('owner') > -1 || roleName.indexOf('chain owner') > -1;
+  var isAdmin = roleName.indexOf('chain admin') > -1 || roleName.indexOf('admin') > -1 || roleName.indexOf('manager') > -1;
+  var isCashier = roleName.indexOf('cashier') > -1;
+
+  if (isCashier) {
+    filters.employeeId = user.id;
+    filters.branchId = user.branchId;
+    
+    // Check if cashier wants current shift or history
+    if (query.currentShift === 'true' || query.currentShift === true) {
+      var activeShift = await cashierShiftRepository.findActiveCashierShiftByBranch(user.branchId);
+      filters.cashierShiftId = activeShift ? activeShift.id : 'non_existent_id';
+    } else if (query.cashierShiftId || query.shiftId) {
+      filters.cashierShiftId = query.cashierShiftId || query.shiftId;
+    }
+  } else if (isAdmin) {
+    filters.branchId = user.branchId;
+    if (query.cashierShiftId || query.shiftId) {
+      filters.cashierShiftId = query.cashierShiftId || query.shiftId;
+    }
+  } else if (isOwner) {
+    var queryBranchId = query.branchId || query.branch_id;
+    if (queryBranchId) {
+      filters.branchId = queryBranchId;
+    }
+    if (query.cashierShiftId || query.shiftId) {
+      filters.cashierShiftId = query.cashierShiftId || query.shiftId;
+    }
+  }
 
   var sortBy = query.sortBy || 'createdAt';
   var sortOrder = query.sortOrder ? query.sortOrder.toLowerCase() : 'desc';

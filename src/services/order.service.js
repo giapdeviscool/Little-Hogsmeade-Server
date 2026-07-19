@@ -1,5 +1,6 @@
 var orderRepository = require('../repositories/order.repository');
 var prisma = require('../lib/prisma');
+var voucherService = require('./voucher.service');
 var authMiddleware = require('../middlewares/auth.middleware');
 var socket = require('../realtime/socket');
 
@@ -171,6 +172,23 @@ async function createOrder(branchId, employeeId, payload) {
     }
 
     var totals = calculateOrderTotals(items, discountAmount, taxAmount);
+
+    var appliedVoucherId = null;
+    if (payload.voucherCode) {
+      // Validate voucher again just in case
+      try {
+        var voucherResult = await voucherService.validateVoucher(payload.voucherCode, totals.subtotal, customerId, branchId);
+        if (voucherResult.isValid) {
+          appliedVoucherId = voucherResult.voucher.id;
+          totals.discountAmount = voucherResult.discountAmount;
+          totals.totalAmount = totals.subtotal - totals.discountAmount + totals.taxAmount;
+          if (totals.totalAmount < 0) totals.totalAmount = 0;
+        }
+      } catch (err) {
+        throwHttpError(400, err.message);
+      }
+    }
+
     if (normalizeOrderType(payload.orderType || '') === 'delivery') {
       var deliveryInfo = payload.deliveryInfo || {};
       var dFee = normalizeNumber(deliveryInfo.deliveryFee || payload.deliveryFee);
@@ -184,8 +202,23 @@ async function createOrder(branchId, employeeId, payload) {
       taxAmount: totals.taxAmount,
       totalAmount: totals.totalAmount,
       pointsEarned: 0,
+      voucherId: appliedVoucherId,
       status: 'unpaid'
     }, tx);
+
+    if (appliedVoucherId) {
+      await tx.voucherUsage.create({
+        data: {
+          voucherId: appliedVoucherId,
+          orderId: order.id,
+          customerId: customerId || undefined
+        }
+      });
+      await tx.voucher.update({
+        where: { id: appliedVoucherId },
+        data: { usedCount: { increment: 1 } }
+      });
+    }
 
 
 

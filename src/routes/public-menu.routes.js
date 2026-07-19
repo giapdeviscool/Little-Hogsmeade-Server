@@ -28,6 +28,18 @@ router.get('/', async function (req, res, next) {
         imageUrl: true,
         basePrice: true,
         isFeatured: true,
+        menuItemVariants: true,
+        menuItemToppingGroups: {
+          include: {
+            toppingGroup: {
+              include: {
+                toppings: {
+                  where: { isActive: true },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -36,6 +48,80 @@ router.get('/', async function (req, res, next) {
         categories: categories,
         menuItems: menuItems,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/top-selling', async function (req, res, next) {
+  try {
+    // Get top 6 menu items by quantity sold in completed orders
+    var topSelling = await prisma.orderItem.groupBy({
+      by: ['menuItemId'],
+      _sum: {
+        quantity: true,
+      },
+      orderBy: {
+        _sum: {
+          quantity: 'desc',
+        },
+      },
+      take: 6,
+    });
+
+    var topMenuItemIds = topSelling.map(function (item) {
+      return item.menuItemId;
+    });
+
+    var menuItems = await prisma.menuItem.findMany({
+      where: {
+        id: { in: topMenuItemIds },
+        isActive: true,
+      },
+      select: {
+        id: true,
+        categoryId: true,
+        name: true,
+        description: true,
+        imageUrl: true,
+        basePrice: true,
+      },
+    });
+
+    // Sort to match the order of topSelling
+    var sortedMenuItems = menuItems.sort(function (a, b) {
+      return topMenuItemIds.indexOf(a.id) - topMenuItemIds.indexOf(b.id);
+    });
+
+    // Pad with other featured or active items if less than 6
+    if (sortedMenuItems.length < 6) {
+      var remainingCount = 6 - sortedMenuItems.length;
+      var existingIds = sortedMenuItems.map(function(item) { return item.id; });
+      var additionalItems = await prisma.menuItem.findMany({
+        where: {
+          id: { notIn: existingIds },
+          isActive: true,
+        },
+        orderBy: [
+          { isFeatured: 'desc' },
+          { name: 'asc' }
+        ],
+        take: remainingCount,
+        select: {
+          id: true,
+          categoryId: true,
+          name: true,
+          description: true,
+          imageUrl: true,
+          basePrice: true,
+        },
+      });
+      sortedMenuItems = sortedMenuItems.concat(additionalItems);
+    }
+
+    res.json({
+      data: sortedMenuItems,
     });
   } catch (error) {
     next(error);
