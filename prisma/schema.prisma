@@ -364,8 +364,9 @@ model Customer {
   avatarUrl    String?   @map("avatar_url")
   createdAt    DateTime  @default(now()) @map("created_at")
   source       String    @default("walk-in")
-  passwordHash String?
-  points       Int       @default(0)
+  passwordHash      String?
+  failedPinAttempts Int       @default(0) @map("failed_pin_attempts")
+  points            Int       @default(0)
   tier         String    @default("Bronze")
 
   customerMemberships CustomerMembership[] @relation("CustomerMembership_customerId_to_Customer")
@@ -744,13 +745,13 @@ model Voucher {
 model VoucherUsage {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   voucherId  String   @map("voucher_id") @db.ObjectId
-  customerId String   @map("customer_id") @db.ObjectId
+  customerId String?  @map("customer_id") @db.ObjectId
   orderId    String   @map("order_id") @db.ObjectId
   usedAt     DateTime @default(now()) @map("used_at")
 
-  voucher  Voucher  @relation("VoucherUsage_voucherId_to_Voucher", fields: [voucherId], references: [id])
-  customer Customer @relation("VoucherUsage_customerId_to_Customer", fields: [customerId], references: [id])
-  order    Order    @relation("VoucherUsage_orderId_to_Order", fields: [orderId], references: [id])
+  voucher  Voucher   @relation("VoucherUsage_voucherId_to_Voucher", fields: [voucherId], references: [id])
+  customer Customer? @relation("VoucherUsage_customerId_to_Customer", fields: [customerId], references: [id])
+  order    Order     @relation("VoucherUsage_orderId_to_Order", fields: [orderId], references: [id])
 
   @@map("voucher_usages")
 }
