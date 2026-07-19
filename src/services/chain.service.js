@@ -270,33 +270,20 @@ async function getMenuSyncPreview() {
 }
 
 async function getBranchMenu(branchId) {
-  var branchCategories = await chainRepository.findBranchCategories(branchId);
+  var categories = await chainRepository.findStandardCategories();
   var branchMenuItems = await chainRepository.findBranchMenuItems(branchId);
-  var branchSpecificCategories = await chainRepository.findBranchSpecificCategories(branchId);
   var branchSpecificMenuItems = await chainRepository.findBranchSpecificMenuItems(branchId);
 
-  var mergedCategories = [].concat(
-    branchCategories.map(function (j) {
-      return {
-        id: j.category.id,
-        name: j.category.name,
-        icon: j.category.icon,
-        displayOrder: j.displayOrder !== null ? j.displayOrder : j.category.displayOrder,
-        isActive: j.isActive,
-        isJunction: true
-      };
-    }),
-    branchSpecificCategories.map(function (cat) {
-      return {
-        id: cat.id,
-        name: cat.name,
-        icon: cat.icon,
-        displayOrder: cat.displayOrder,
-        isActive: cat.isActive,
-        isJunction: false
-      };
-    })
-  );
+  var mergedCategories = categories.map(function(c) {
+    return {
+      id: c.id,
+      name: c.name,
+      displayOrder: c.displayOrder,
+      isActive: c.isActive,
+      isGlobal: true,
+      isJunction: false
+    };
+  });
 
   var mergedMenuItems = [].concat(
     branchMenuItems.map(function (j) {
