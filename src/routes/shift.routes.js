@@ -8,8 +8,6 @@ router.use(authMiddleware.authenticate);
 router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
 
 
-router.use(authMiddleware.authenticate);
-
 // UC59: Manage shift categories (Chain Admin / Owner restricted)
 router.get('/', authMiddleware.requireChainRole, shiftController.getShifts);
 router.post('/', authMiddleware.requireChainRole, shiftController.createShift);

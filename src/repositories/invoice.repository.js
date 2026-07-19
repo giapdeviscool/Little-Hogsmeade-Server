@@ -38,16 +38,26 @@ async function findInvoices(filters, skip, limit, sortBy, sortOrder) {
     };
   }
 
-  // Customer Name filter
-  if (filters.customerName) {
-    where.order = {
-      customer: {
+  // Order level filters (branchId, employeeId, cashierShiftId, customerName)
+  if (filters.branchId || filters.employeeId || filters.cashierShiftId || filters.customerName) {
+    where.order = {};
+    if (filters.branchId) {
+      where.order.branchId = filters.branchId;
+    }
+    if (filters.employeeId) {
+      where.order.employeeId = filters.employeeId;
+    }
+    if (filters.cashierShiftId) {
+      where.order.cashierShiftId = filters.cashierShiftId;
+    }
+    if (filters.customerName) {
+      where.order.customer = {
         fullName: {
           contains: filters.customerName,
           mode: 'insensitive'
         }
-      }
-    };
+      };
+    }
   }
 
   // Amount range filter

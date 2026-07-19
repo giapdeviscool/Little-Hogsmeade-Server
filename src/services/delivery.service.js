@@ -130,7 +130,7 @@ async function createDeliveryOrder(payload, user) {
   var note = payload.note || null;
 
   // 7. DB Transaction
-  return prisma.$transaction(async function(tx) {
+  return prisma.$transaction(async function (tx) {
     // A. Create Order
     var order = await tx.order.create({
       data: {
@@ -214,7 +214,7 @@ async function createDeliveryOrder(payload, user) {
 async function getDeliveryOrders(query, user) {
   var statuses = [];
   if (query && query.status) {
-    statuses = query.status.split(',').map(function(s) {
+    statuses = query.status.split(',').map(function (s) {
       return s.trim();
     }).filter(Boolean);
   }
@@ -243,14 +243,14 @@ async function getDeliveryOrders(query, user) {
   });
 
   // Sort by order's createdAt desc in JavaScript to ensure MongoDB compatibility
-  deliveryOrders.sort(function(a, b) {
+  deliveryOrders.sort(function (a, b) {
     var dateA = a.order ? new Date(a.order.createdAt) : 0;
     var dateB = b.order ? new Date(b.order.createdAt) : 0;
     return dateB - dateA;
   });
 
   // Map to the requested response format
-  return deliveryOrders.map(function(doItem) {
+  return deliveryOrders.map(function (doItem) {
     var invoice = doItem.order && doItem.order.invoices && doItem.order.invoices[0];
     var isPaid = invoice ? invoice.status === 'paid' : false;
     var totalAmount = invoice ? invoice.totalAmount : 0;
@@ -342,7 +342,7 @@ async function updateDeliveryStatus(deliveryId, payload) {
 
   var note = payload.note || deliveryOrder.note || null;
 
-  return prisma.$transaction(async function(tx) {
+  return prisma.$transaction(async function (tx) {
     var updateData = {
       status: status,
       note: note
