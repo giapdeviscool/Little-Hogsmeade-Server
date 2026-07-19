@@ -19,23 +19,7 @@ async function getCategories(query, user) {
     filters.isActive = query.status === 'active';
   }
 
-  // Filter by branch jurisdiction
-  // Wait, UC states global menu categories or localized branch overrides
-  // Currently, we will show global categories (branchId: null) or categories specific to the user's branch
-  if (query.branchId) {
-    filters.branchId = query.branchId;
-  } else if (user && user.branchId) {
-    // If the user belongs to a branch, maybe show branch specific OR global
-    // But since it's a centralized catalog, typically we'd show all if it's chain admin, or just the branch's categories.
-    // We will support an exact match if provided, otherwise default to all or branch-specific
-    filters.OR = [
-      { branchId: user.branchId },
-      { branchId: null }
-    ];
-  } else {
-    // Global only
-    filters.branchId = null;
-  }
+  // Categories now always global — no branchId filtering
 
   var [items, total] = await Promise.all([
     categoryRepository.findCategories(filters, skip, limit),
@@ -58,38 +42,20 @@ async function createCategory(payload, user) {
     throw { status: 400, message: 'Category name is required' };
   }
 
-  // Determine branchId
-  var branchId = null;
-  if (user.role.name === 'Owner') {
-    branchId = payload.branchId || null;
-  } else if (user.role.name === 'Chain Admin') {
-    branchId = payload.branchId || user.branchId || null;
-  } else {
-    throw { status: 403, message: 'Forbidden' };
-  }
-
-  // Check unique name
-  var existing = await categoryRepository.findCategoryByName(payload.name, branchId);
+  // Check unique name (global)
+  var existing = await categoryRepository.findCategoryByName(payload.name, null);
   if (existing) {
     throw { status: 400, message: 'A category with this name already exists. Please choose a different name.' };
   }
 
-  // Append to the end by getting current max displayOrder
-  var maxOrderCategory = await categoryRepository.findCategories({ branchId: branchId }, 0, 1);
-  var nextDisplayOrder = 0;
-  if (maxOrderCategory && maxOrderCategory.length > 0) {
-    // We need the absolute max, the repo query might just be sorting.
-    // Let's just do a count or rely on the total count.
-    var totalCategories = await categoryRepository.countCategories({ branchId: branchId });
-    nextDisplayOrder = totalCategories;
-  }
+  // Append to the end
+  var totalCategories = await categoryRepository.countCategories({});
+  var nextDisplayOrder = totalCategories;
 
   return categoryRepository.createCategory({
     name: payload.name,
-    icon: payload.icon || null,
     displayOrder: nextDisplayOrder,
-    isActive: payload.isActive !== undefined ? payload.isActive : true,
-    branchId: branchId
+    isActive: payload.isActive !== undefined ? payload.isActive : true
   });
 }
 
@@ -101,7 +67,7 @@ async function updateCategory(id, payload, user) {
 
   // Check unique name if changing
   if (payload.name && payload.name !== category.name) {
-    var existing = await categoryRepository.findCategoryByName(payload.name, category.branchId, id);
+    var existing = await categoryRepository.findCategoryByName(payload.name, null, id);
     if (existing) {
       throw { status: 400, message: 'A category with this name already exists. Please choose a different name.' };
     }
@@ -116,8 +82,6 @@ async function updateCategory(id, payload, user) {
 
   var updateData = {};
   if (payload.name !== undefined) updateData.name = payload.name;
-  if (payload.icon !== undefined) updateData.icon = payload.icon;
-  // Ignore displayOrder updates from general update
   if (payload.isActive !== undefined) updateData.isActive = payload.isActive;
 
   return categoryRepository.updateCategory(id, updateData);
@@ -143,7 +107,6 @@ async function swapDisplayOrder(id, direction, user) {
 }
 
 async function deleteCategory(id, user) {
-  // Soft delete
   return updateCategory(id, { isActive: false }, user);
 }
 

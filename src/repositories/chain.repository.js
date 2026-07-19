@@ -98,33 +98,11 @@ function replaceBranchMenu(branch, categories, menuItems) {
       });
     }
 
-    await tx.category.deleteMany({
-      where: { branchId: branch.id }
-    });
-
-    var categoryIdMap = {};
-
-    for (var i = 0; i < categories.length; i += 1) {
-      var category = await tx.category.create({
-        data: {
-          branchId: branch.id,
-          name: categories[i].name,
-          icon: categories[i].icon,
-          displayOrder: categories[i].displayOrder,
-          isActive: categories[i].isActive
-        }
-      });
-
-      categoryIdMap[categories[i].id] = category.id;
-    }
+      // Categories are global — no longer copy per branch
+    // Just copy menu items with their original categoryId
 
     for (var j = 0; j < menuItems.length; j += 1) {
       var sourceItem = menuItems[j];
-      var categoryId = categoryIdMap[sourceItem.categoryId];
-
-      if (!categoryId) {
-        continue;
-      }
 
       var menuItem = await tx.menuItem.create({
         data: {
