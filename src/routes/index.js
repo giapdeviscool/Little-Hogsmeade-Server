@@ -36,6 +36,7 @@ var cashierShiftRoutes = require("./cashier-shift.routes");
 var paymentRoutes = require("./payment.routes");
 var otpRoutes = require("./otp.routes");
 var publicMenuRoutes = require("./public-menu.routes");
+var voucherRoutes = require("./voucher.routes");
 var branchMenuRoutes = require("./branch-menu.routes");
 var resourcesConfig = require("../config/resources");
 var createResourceRouter = require("./resource.routes");
@@ -77,6 +78,7 @@ router.use("/preparations", preparationRoutes);
 router.use("/stock-conversions", stockConversionRoutes);
 router.use("/otp", otpRoutes);
 router.use("/public/menu", publicMenuRoutes);
+router.use("/vouchers", voucherRoutes);
 
 router.get("/resources", function (req, res) {
   res.json({
