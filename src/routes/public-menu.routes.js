@@ -1,7 +1,6 @@
 var express = require('express');
 
 var prisma = require('../lib/prisma');
-var chainService = require('../services/chain.service');
 
 var router = express.Router();
 
@@ -45,6 +44,10 @@ router.get('/', async function (req, res, next) {
 
 router.get('/:branchId', async function (req, res, next) {
   try {
+    if (!/^[a-f\d]{24}$/i.test(req.params.branchId)) {
+      return res.status(400).json({ message: 'Invalid branch ID' });
+    }
+
     var branch = await prisma.branch.findUnique({
       where: { id: req.params.branchId }
     });
@@ -53,10 +56,45 @@ router.get('/:branchId', async function (req, res, next) {
       return res.status(404).json({ message: 'Branch not found or inactive' });
     }
 
-    var result = await chainService.getBranchMenu(req.params.branchId);
+    // Lấy global categories + branch-specific categories
+    var categories = await prisma.category.findMany({
+      where: {
+        OR: [
+          { branchId: null },
+          { branchId: req.params.branchId }
+        ],
+        isActive: true
+      },
+      orderBy: { displayOrder: 'asc' },
+      select: { id: true, name: true, icon: true, displayOrder: true }
+    });
+
+    // Lấy global items + branch-specific items
+    var menuItems = await prisma.menuItem.findMany({
+      where: {
+        OR: [
+          { branchId: null },
+          { branchId: req.params.branchId }
+        ],
+        isActive: true
+      },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        categoryId: true,
+        name: true,
+        description: true,
+        imageUrl: true,
+        basePrice: true,
+        isFeatured: true
+      }
+    });
 
     res.json({
-      data: result,
+      data: {
+        categories: categories,
+        menuItems: menuItems
+      },
       branch: {
         id: branch.id,
         name: branch.name,
