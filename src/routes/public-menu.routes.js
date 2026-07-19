@@ -56,17 +56,11 @@ router.get('/:branchId', async function (req, res, next) {
       return res.status(404).json({ message: 'Branch not found or inactive' });
     }
 
-    // Lấy global categories + branch-specific categories
+    // Categories are global — only null branchId (no old branch copies)
     var categories = await prisma.category.findMany({
-      where: {
-        OR: [
-          { branchId: null },
-          { branchId: req.params.branchId }
-        ],
-        isActive: true
-      },
+      where: { branchId: null, isActive: true },
       orderBy: { displayOrder: 'asc' },
-      select: { id: true, name: true, icon: true, displayOrder: true }
+      select: { id: true, name: true, displayOrder: true }
     });
 
     // Lấy global items + branch-specific items
