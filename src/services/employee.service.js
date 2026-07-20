@@ -52,7 +52,7 @@ function buildWhereFilter(query, currentUser) {
       assertValidObjectId(query.branchId, 'branchId');
       where.branchId = query.branchId;
     }
-  } else if (authMiddleware.isChainAdmin(currentUser)) {
+  } else {
     // Force branch isolation – override any frontend params
     where.branchId = currentUser.branchId;
   }

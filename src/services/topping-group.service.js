@@ -1,11 +1,18 @@
 var toppingGroupRepository = require('../repositories/topping-group.repository');
 
-async function getToppingGroups(user) {
-  var roleName = user.roleName || '';
+async function getToppingGroups(query, user) {
+  var roleName = (user.roleName || '').trim().toLowerCase();
+  var isOwner = roleName.includes('owner');
   var branchId = null;
-  if (roleName === 'Chain Admin' || roleName === 'Cashier') {
+  
+  if (isOwner) {
+    if (query.branchId && query.branchId !== '') {
+      branchId = query.branchId;
+    }
+  } else {
     branchId = user.branchId;
   }
+  
   return await toppingGroupRepository.findToppingGroups(branchId);
 }
 

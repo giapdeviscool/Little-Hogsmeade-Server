@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const preparationRepo = require('../repositories/preparation.repository');
+const preparationService = require('./preparation.service');
 
 class StockConversionService {
   async convertStock(branchId, employeeId, preparationId, targetYieldQuantity) {
@@ -8,12 +8,12 @@ class StockConversionService {
       throw new Error('Target quantity must be greater than 0');
     }
 
-    const preparation = await preparationRepo.getPreparationRecipeById(preparationId);
-    if (!preparation) {
-      const error = new Error('Preparation not found');
-      error.statusCode = 404;
-      throw error;
-    }
+    // Use preparationService to properly resolve global recipe to local ingredients
+    const preparation = await preparationService.getPreparationRecipeById(
+      { branchId, roleName: 'staff' }, // mock user object sufficient for isOwner/branchId checks
+      branchId,
+      preparationId
+    );
 
     if (preparation.branchId !== branchId) {
       const error = new Error('Forbidden');
