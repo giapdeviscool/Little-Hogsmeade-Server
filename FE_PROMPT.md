@@ -35,7 +35,7 @@ If the Cashier selects **Bank Transfer (QR Code)**:
     "amount": <invoice.totalAmount>
   }
   ```
-- Use the `data.qrCodeUrl` from the API response to display the VietQR image to the customer.
+- Use the `data.qrCodeUrl` from the API response to display the SepayQR image to the customer.
 - **WebSocket Listener:** Listen on the global WebSocket for the event `payment_success_${invoice._id}`.
 - **On Socket Event Received:** This means the bank webhook has successfully verified the transfer. Replace the pending statement with a success message, close the QR modal, and clear the cart.
 - **On Error/Timeout:** Show an error/timeout message and provide a way to cancel or retry.

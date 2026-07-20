@@ -40,7 +40,7 @@ async function createQrIntent(payload) {
   // Create payment record with pending status
   var payment = await paymentRepository.createPayment({
     invoiceId: invoiceId,
-    method: 'vietqr',
+    method: 'sepayqr',
     amount: amount,
     transactionRef: referenceString,
     qrCodeUrl: qrCodeUrl,

@@ -321,7 +321,7 @@ async function updateOrderStatus(id, status) {
                 orderId: id,
                 type: 'earn',
                 points: pointsEarned,
-                note: 'Loyalty points earned for paid order'
+                note: 'Điểm thưởng cho đơn hàng đã thanh toán'
               }, tx);
             }
           }
@@ -348,7 +348,7 @@ async function updateOrderStatus(id, status) {
               orderId: id,
               type: 'adjust',
               points: -Math.abs(invoice.pointsEarned),
-              note: 'Loyalty rollback for cancelled or refunded order'
+              note: 'Thu hồi điểm cho đơn hàng đã hủy hoặc hoàn tiền'
             }, tx);
           }
         }

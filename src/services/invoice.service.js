@@ -106,7 +106,7 @@ async function getAdminInvoices(query, user) {
 
   var paymentMethod = query.paymentMethod;
   if (paymentMethod) {
-    if (['cash', 'vietqr'].indexOf(paymentMethod) === -1) {
+    if (['cash', 'sepayqr'].indexOf(paymentMethod) === -1) {
       throwHttpError(400, 'Invalid paymentMethod parameter');
     }
   }
