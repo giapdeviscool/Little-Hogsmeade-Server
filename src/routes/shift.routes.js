@@ -5,7 +5,9 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
+
 router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier', 'staff']));
+
 
 
 // UC59: Manage shift categories (Chain Admin / Owner restricted)

@@ -9,14 +9,28 @@ var MAX_LIMIT = 100;
 var MIN_REQUIRED_POINTS = 1;
 
 async function getRewards(user, query) {
-  var branchId = resolveBranchId(user, query && query.branchId);
+  var branchId = null;
+  try {
+    if (query && query.branchId === 'null') {
+      branchId = null;
+    } else {
+      branchId = resolveBranchId(user, query && query.branchId);
+    }
+  } catch (err) {
+    // allow branchId to be optional for general viewing
+    branchId = undefined;
+  }
+  
   var page = parsePositiveInt(query && query.page, DEFAULT_PAGE);
   var limit = Math.min(parsePositiveInt(query && query.limit, DEFAULT_LIMIT), MAX_LIMIT);
   var skip = (page - 1) * limit;
   var filters = {
-    branchId: branchId,
     isDeleted: false
   };
+
+  if (branchId !== undefined) {
+    filters.branchId = branchId;
+  }
 
   if (query && query.search) {
     filters.name = {
@@ -51,7 +65,22 @@ async function getRewards(user, query) {
 }
 
 async function createReward(payload, user, query) {
-  var branchId = resolveBranchId(user, (payload && payload.branchId) || (query && query.branchId));
+  var rawBranchId = undefined;
+  if (payload && payload.branchId !== undefined) {
+    rawBranchId = payload.branchId;
+  } else if (query && query.branchId !== undefined) {
+    rawBranchId = query.branchId;
+  }
+  var branchId = null;
+  try {
+    if (rawBranchId === null || rawBranchId === 'null') {
+      branchId = null;
+    } else {
+      branchId = resolveBranchId(user, rawBranchId);
+    }
+  } catch(e) {
+    // If not found, it's a global reward, which is allowed now
+  }
   var data = buildRewardData(payload, branchId);
 
   await validateProductForReward(data.discountType, data.productId, branchId);
@@ -143,6 +172,14 @@ function buildRewardUpdateData(payload, reward) {
   var data = {
     updatedAt: new Date()
   };
+
+  if (payload.branchId !== undefined) {
+    if (payload.branchId === null || payload.branchId === 'null') {
+      data.branchId = null;
+    } else {
+      data.branchId = payload.branchId;
+    }
+  }
 
   if (payload.name !== undefined) {
     if (!String(payload.name).trim()) {
@@ -310,6 +347,13 @@ function resolveBranchId(user, branchId) {
 }
 
 function assertBranchAccess(user, branchId) {
+  var roleName = user.roleName || (user.role && user.role.name) || '';
+  var isOwner = roleName.toLowerCase().includes('owner');
+
+  if (isOwner) {
+    return; // Owner can manage all branches
+  }
+
   if (user && user.branchId && user.branchId !== branchId) {
     throwHttpError(403, 'You do not have permission to manage rewards for this branch');
   }

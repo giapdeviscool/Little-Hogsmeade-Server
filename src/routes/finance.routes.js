@@ -5,14 +5,14 @@ const authMiddleware = require('../middlewares/auth.middleware');
 
 // Apply auth middleware to all routes
 router.use(authMiddleware.authenticate);
-// Ensure only managers/owners can access finance reports
+// Ensure only chain admins/owners can access finance reports
 // Assuming we have requireChainRole or we can just use authenticate for now
 // and rely on frontend for hiding, but let's apply requireChainRole if possible.
 // For simplicity and since we don't know the exact signature of requireChainRole,
 // we will just authenticate. The prompt says: "RBAC middleware chặn Staff/Cashier riêng cho finance routes".
 // We will add a quick middleware for role check.
 
-const requireManagerOrOwner = (req, res, next) => {
+const requireChainAdminOrOwner = (req, res, next) => {
   const role = req.user.role?.name || req.user.role; // depending on how it's populated
   if (role === 'staff' || role === 'cashier') {
     return res.status(403).json({ success: false, message: 'Forbidden: Bạn không có quyền xem báo cáo tài chính' });
@@ -28,7 +28,7 @@ const requireOwner = (req, res, next) => {
   next();
 };
 
-router.use(requireManagerOrOwner);
+router.use(requireChainAdminOrOwner);
 
 router.get('/dashboard', financeController.getDashboardData);
 router.get('/break-even', financeController.getBreakEven);

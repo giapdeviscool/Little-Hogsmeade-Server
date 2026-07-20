@@ -20,12 +20,20 @@ async function getInvoices(query, user) {
 
   var roleName = (user && user.roleName || '').trim().toLowerCase();
   var isOwner = roleName.indexOf('owner') > -1 || roleName.indexOf('chain owner') > -1;
-  var isAdmin = roleName.indexOf('chain admin') > -1 || roleName.indexOf('admin') > -1 || roleName.indexOf('manager') > -1;
   var isCashier = roleName.indexOf('cashier') > -1;
+
+  // By default, restrict to user's own branch if not owner
+  if (!isOwner && user && user.branchId) {
+    filters.branchId = user.branchId;
+  } else if (isOwner) {
+    var queryBranchId = query.branchId || query.branch_id;
+    if (queryBranchId) {
+      filters.branchId = queryBranchId;
+    }
+  }
 
   if (isCashier) {
     filters.employeeId = user.id;
-    filters.branchId = user.branchId;
     
     // Check if cashier wants current shift or history
     if (query.currentShift === 'true' || query.currentShift === true) {
@@ -34,16 +42,7 @@ async function getInvoices(query, user) {
     } else if (query.cashierShiftId || query.shiftId) {
       filters.cashierShiftId = query.cashierShiftId || query.shiftId;
     }
-  } else if (isAdmin) {
-    filters.branchId = user.branchId;
-    if (query.cashierShiftId || query.shiftId) {
-      filters.cashierShiftId = query.cashierShiftId || query.shiftId;
-    }
-  } else if (isOwner) {
-    var queryBranchId = query.branchId || query.branch_id;
-    if (queryBranchId) {
-      filters.branchId = queryBranchId;
-    }
+  } else {
     if (query.cashierShiftId || query.shiftId) {
       filters.cashierShiftId = query.cashierShiftId || query.shiftId;
     }
@@ -82,7 +81,16 @@ async function getAdminInvoices(query, user) {
   var limit = parseInt(query.limit, 10) || 20;
   var skip = (page - 1) * limit;
 
-  var branchId = query.branchId || (user && user.branchId) || null;
+  var roleName = (user && user.roleName || '').trim().toLowerCase();
+  var isOwner = roleName.indexOf('owner') > -1 || roleName.indexOf('chain owner') > -1;
+
+  var branchId = null;
+  if (!isOwner && user && user.branchId) {
+    branchId = user.branchId;
+  } else {
+    branchId = query.branchId || null;
+  }
+
   if (branchId) {
     if (typeof branchId !== 'string' || !/^[a-f\d]{24}$/i.test(branchId)) {
       throwHttpError(400, 'branchId must be a valid ObjectId');
@@ -171,6 +179,7 @@ async function getAdminInvoices(query, user) {
 
       orderInfo = {
         tableId: invoice.order.tableId,
+        branchId: invoice.order.branchId,
         items: items
       };
     }

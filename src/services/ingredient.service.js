@@ -42,7 +42,7 @@ async function getIngredientById(branchId, id) {
 
 async function createIngredient(data, user) {
   var roleName = (user.roleName || '').trim().toLowerCase();
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
   var isOwner = roleName.includes('owner');
 
   if (!isAdmin && !isOwner) {
@@ -114,7 +114,7 @@ async function createIngredient(data, user) {
 
 async function updateIngredient(id, data, user) {
   var roleName = (user.roleName || '').trim().toLowerCase();
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
   var isOwner = roleName.includes('owner');
 
   if (!isAdmin && !isOwner) {

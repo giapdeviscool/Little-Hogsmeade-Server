@@ -5,6 +5,11 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
+
+router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
+
+
+
 // All payroll routes require authentication
 // Service layer handles RBAC data isolation (Staff sees only own, Admin sees branch, Owner sees all)
 router.use(authMiddleware.authenticate);

@@ -6,18 +6,16 @@ var reservationController = require('../controllers/reservation.controller');
 
 var router = express.Router();
 
-router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier']));
-
-
 router.post('/:id/check-in',
   authMiddleware.authenticate,
+  authMiddleware.verifyRole(['owner', 'chain admin', 'cashier']),
   validate(reservationValidator.checkInSchema),
   reservationController.checkIn
 );
 
 router.patch('/:id/status',
   authMiddleware.authenticate,
+  authMiddleware.verifyRole(['owner', 'chain admin', 'cashier']),
   validate(reservationValidator.noShowSchema),
   reservationController.markNoShow
 );

@@ -5,13 +5,13 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
 
 // GET menu cho branch: global items + branch-specific items
 router.get('/:branchId/menu', async function(req, res, next) {
   try {
     var categories = await prisma.category.findMany({
-      where: { branchId: null, isActive: true },
+      where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
       select: { id: true, name: true, displayOrder: true, isActive: true }
     });

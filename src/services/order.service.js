@@ -189,11 +189,6 @@ async function createOrder(branchId, employeeId, payload) {
       }
     }
 
-    if (normalizeOrderType(payload.orderType || '') === 'delivery') {
-      var deliveryInfo = payload.deliveryInfo || {};
-      var dFee = normalizeNumber(deliveryInfo.deliveryFee || payload.deliveryFee);
-      totals.totalAmount += dFee;
-    }
 
     var invoice = await orderRepository.createInvoice({
       orderId: order.id,
@@ -235,22 +230,6 @@ async function createOrder(branchId, employeeId, payload) {
       });
     }
 
-    var deliveryOrder = null;
-    if (normalizeOrderType(payload.orderType || '') === 'delivery') {
-      var deliveryInfo = payload.deliveryInfo || {};
-      deliveryOrder = await tx.deliveryOrder.create({
-        data: {
-          orderId: order.id,
-          customerName: deliveryInfo.customerName || payload.customerName || 'Khách hàng',
-          customerPhone: deliveryInfo.customerPhone || payload.customerPhone || '',
-          deliveryAddress: deliveryInfo.deliveryAddress || payload.deliveryAddress || '',
-          deliveryFee: normalizeNumber(deliveryInfo.deliveryFee || payload.deliveryFee),
-          estimatedTime: deliveryInfo.estimatedTime ? new Date(deliveryInfo.estimatedTime) : null,
-          status: 'pending',
-          note: deliveryInfo.note || payload.note || null
-        }
-      });
-    }
 
     return {
       success: true,

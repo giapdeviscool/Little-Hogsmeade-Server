@@ -10,6 +10,7 @@ async function getInvoices(req, res, next) {
       pagination: result.pagination
     });
   } catch (error) {
+    console.error('getInvoices Error:', error);
     next(error);
   }
 }
