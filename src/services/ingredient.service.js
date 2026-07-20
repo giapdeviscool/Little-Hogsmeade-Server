@@ -244,9 +244,57 @@ async function updateIngredient(id, data, user) {
   return updated;
 }
 
+async function getStats(branchId, user) {
+  var bId = branchId;
+  var roleName = (user.roleName || '').trim().toLowerCase();
+  if (!roleName.includes('owner')) {
+    bId = user.branchId; // Enforce branch access
+  }
+
+  if (!bId) {
+    return { totalValue: 0, lowStockCount: 0, receiptsThisMonth: 0 };
+  }
+
+  var prisma = require('../lib/prisma');
+  
+  var ingredients = await prisma.ingredient.findMany({
+    where: { branchId: bId }
+  });
+
+  var totalValue = 0;
+  var lowStockCount = 0;
+
+  for (var ing of ingredients) {
+    if (ing.currentStock > 0) {
+      totalValue += (ing.currentStock * (ing.unitCost || 0));
+    }
+    if (ing.currentStock <= (ing.minStockLevel || 0)) {
+      lowStockCount++;
+    }
+  }
+
+  var now = new Date();
+  var startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  var receiptsThisMonth = await prisma.stockTransaction.count({
+    where: {
+      branchId: bId,
+      type: 'RECEIPT',
+      createdAt: { gte: startOfMonth }
+    }
+  });
+
+  return {
+    totalValue: totalValue,
+    lowStockCount: lowStockCount,
+    receiptsThisMonth: receiptsThisMonth
+  };
+}
+
 module.exports = {
   getIngredients: getIngredients,
   getIngredientById: getIngredientById,
   createIngredient: createIngredient,
-  updateIngredient: updateIngredient
+  updateIngredient: updateIngredient,
+  getStats: getStats
 };

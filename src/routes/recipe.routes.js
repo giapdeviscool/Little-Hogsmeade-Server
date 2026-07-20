@@ -3,7 +3,7 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'kitchen']));
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'kitchen', 'cashier', 'staff']));
 
 var recipeController = require('../controllers/recipe.controller');
 

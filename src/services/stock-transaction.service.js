@@ -48,16 +48,18 @@ async function createGoodsReceipt(payload, currentUser) {
       // BR-INV13: Convert from import unit to export unit
       var conversionRate = ingredient.conversionRate || 1.0;
       var exportQuantity = item.quantity * conversionRate;
-      var unitCost = item.unitCost || 0;
-      var totalCost = exportQuantity * unitCost;
+      var importUnitCost = item.unitCost || 0; // Cost per IMPORT unit
+      var totalCost = item.quantity * importUnitCost; // Total cost = import qty * import unit cost
+      var baseUnitCost = exportQuantity > 0 ? totalCost / exportQuantity : 0; // Cost per BASE unit
 
-      // Update current stock
+      // Update current stock and latest unit cost
       var updatedIngredient = await tx.ingredient.update({
         where: { id: item.ingredientId },
         data: {
           currentStock: {
             increment: exportQuantity
-          }
+          },
+          unitCost: baseUnitCost
         }
       });
 
@@ -70,7 +72,7 @@ async function createGoodsReceipt(payload, currentUser) {
           ingredientId: item.ingredientId,
           type: 'RECEIPT',
           quantity: exportQuantity,
-          unitCost: unitCost,
+          unitCost: baseUnitCost,
           totalCost: totalCost,
           employeeId: currentUser.id,
           note: item.note || 'Goods Receipt'
@@ -81,7 +83,7 @@ async function createGoodsReceipt(payload, currentUser) {
     }
 
     return createdTransactions;
-  });
+  }, { maxWait: 10000, timeout: 30000 });
 
   return result;
 }
@@ -175,7 +177,7 @@ async function createGoodsIssue(payload, currentUser) {
     }
 
     return createdTransactions;
-  });
+  }, { maxWait: 10000, timeout: 30000 });
 
   return result;
 }

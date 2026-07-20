@@ -33,7 +33,17 @@ async function updateIngredient(req, res, next) {
   }
 }
 
+async function getStats(req, res, next) {
+  try {
+    var result = await ingredientService.getStats(req.query.branchId, req.user);
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
+  getStats: getStats,
   getIngredients: getIngredients,
   createIngredient: createIngredient,
   updateIngredient: updateIngredient

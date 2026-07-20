@@ -16,7 +16,11 @@ async function getMenuItems(query, user) {
   if (isOwner) {
     // Owner sees all, or can filter by branchId explicitly if passed
     if (query.branchId) {
-      filters.branchId = query.branchId;
+      if (query.branchId === 'global') {
+        filters.branchId = null;
+      } else {
+        filters.branchId = query.branchId;
+      }
     }
   } else if (isAdmin || isCashier) {
     // See global items (branchId: null) or their branch items
