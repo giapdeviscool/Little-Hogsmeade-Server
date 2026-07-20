@@ -6,6 +6,7 @@ async function findMenuItems(filters, skip, take) {
     skip: skip,
     take: take,
     orderBy: [
+      { isActive: 'desc' },
       { category: { displayOrder: 'asc' } },
       { name: 'asc' }
     ],
@@ -14,6 +15,15 @@ async function findMenuItems(filters, skip, take) {
         select: {
           name: true,
           displayOrder: true
+        }
+      },
+      recipes: {
+        include: {
+          ingredient: {
+            select: {
+              currentStock: true
+            }
+          }
         }
       },
       _count: {
