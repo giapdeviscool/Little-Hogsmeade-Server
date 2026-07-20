@@ -1,5 +1,6 @@
 var express = require('express');
 var customerController = require('../controllers/customer.controller');
+var loyaltyController = require('../controllers/loyalty.controller');
 var authMiddleware = require('../middlewares/auth.middleware');
 var validate = require('../middlewares/validate.middleware');
 var customerValidator = require('../validators/customer.validator');
@@ -10,6 +11,7 @@ var router = express.Router();
 router.get('/auth/check-phone', customerController.checkPhoneAuth);
 router.post('/auth/login', customerController.customerLogin);
 router.post('/auth/change-pin', customerController.changePin);
+router.get('/loyalty/rewards', loyaltyController.getRewards);
 
 // Protected routes
 router.get('/', authMiddleware.authenticate, authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier']), customerController.listCustomers);

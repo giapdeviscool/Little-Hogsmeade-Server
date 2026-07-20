@@ -427,7 +427,7 @@ model LoyaltyConfig {
 
 model LoyaltyReward {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  branchId       String   @map("branch_id") @db.ObjectId
+  branchId       String?  @map("branch_id") @db.ObjectId
   name           String
   description    String?
   pointsRequired Int      @map("points_required")
@@ -442,7 +442,7 @@ model LoyaltyReward {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  branch   Branch    @relation("LoyaltyReward_branchId_to_Branch", fields: [branchId], references: [id])
+  branch   Branch?    @relation("LoyaltyReward_branchId_to_Branch", fields: [branchId], references: [id])
   product  MenuItem? @relation("LoyaltyReward_productId_to_MenuItem", fields: [productId], references: [id])
   vouchers Voucher[] // Back-reference
 
