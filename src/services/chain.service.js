@@ -187,17 +187,25 @@ async function updatePricing(payload, user) {
   };
 }
 
-async function createPromotion(payload) {
+async function createPromotion(payload, user) {
   var data = normalizePromotionPayload(payload);
+  if (user && !authMiddleware.isOwner(user)) {
+    data.scope = 'specific';
+    data.appliedBranches = user.branchId ? [user.branchId] : [];
+  }
   return chainRepository.createVoucher(data);
 }
 
-async function getPromotions(query) {
+async function getPromotions(query, user) {
   var page = parsePositiveInt(query.page, 1);
   var limit = Math.min(parsePositiveInt(query.limit, 20), 100);
   var skip = (page - 1) * limit;
 
   var where = {};
+
+  if (user && !authMiddleware.isOwner(user) && user.branchId) {
+    where.appliedBranches = { has: user.branchId };
+  }
 
   if (query.search) {
     var searchStr = String(query.search).trim();
@@ -238,17 +246,36 @@ async function getPromotions(query) {
   };
 }
 
-async function updatePromotion(id, payload) {
+async function updatePromotion(id, payload, user) {
   var data = normalizePromotionPayload(payload);
+  if (user && !authMiddleware.isOwner(user)) {
+    var existingVoucher = await chainRepository.findVoucherById(id);
+    if (existingVoucher && existingVoucher.scope === 'specific' && !existingVoucher.appliedBranches.includes(user.branchId)) {
+      throwHttpError(403, 'Bạn không có quyền chỉnh sửa voucher của chi nhánh khác.');
+    } else if (existingVoucher && existingVoucher.scope === 'global') {
+      throwHttpError(403, 'Bạn không có quyền chỉnh sửa voucher toàn chuỗi.');
+    }
+    data.scope = 'specific';
+    data.appliedBranches = user.branchId ? [user.branchId] : [];
+  }
   return chainRepository.updateVoucher(id, data);
 }
 
-async function togglePromotionStatus(id) {
+async function togglePromotionStatus(id, user) {
   assertValidObjectId(id, 'promotion id');
   var voucher = await chainRepository.findVoucherById(id);
 
   if (!voucher) {
     throwHttpError(404, 'Promotion not found');
+  }
+
+  if (user && !authMiddleware.isOwner(user)) {
+    if (voucher.scope === 'global') {
+      throwHttpError(403, 'Bạn không có quyền thay đổi trạng thái voucher toàn chuỗi.');
+    }
+    if (voucher.scope === 'specific' && !voucher.appliedBranches.includes(user.branchId)) {
+      throwHttpError(403, 'Bạn không có quyền thay đổi trạng thái voucher của chi nhánh khác.');
+    }
   }
 
   var newStatus = !voucher.isActive;

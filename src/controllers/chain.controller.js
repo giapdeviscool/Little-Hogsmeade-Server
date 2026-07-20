@@ -63,7 +63,7 @@ async function updatePricing(req, res, next) {
 
 async function createPromotion(req, res, next) {
   try {
-    var result = await chainService.createPromotion(req.body);
+    var result = await chainService.createPromotion(req.body, req.user);
     res.status(201).json({ data: result });
   } catch (error) {
     next(error);
@@ -72,7 +72,7 @@ async function createPromotion(req, res, next) {
 
 async function getPromotions(req, res, next) {
   try {
-    var result = await chainService.getPromotions(req.query || {});
+    var result = await chainService.getPromotions(req.query || {}, req.user);
     res.json({ data: result });
   } catch (error) {
     next(error);
@@ -81,7 +81,7 @@ async function getPromotions(req, res, next) {
 
 async function updatePromotion(req, res, next) {
   try {
-    var result = await chainService.updatePromotion(req.params.id, req.body);
+    var result = await chainService.updatePromotion(req.params.id, req.body, req.user);
     res.json({ data: result });
   } catch (error) {
     next(error);
@@ -90,7 +90,7 @@ async function updatePromotion(req, res, next) {
 
 async function togglePromotionStatus(req, res, next) {
   try {
-    var result = await chainService.togglePromotionStatus(req.params.id);
+    var result = await chainService.togglePromotionStatus(req.params.id, req.user);
     res.json({ data: result });
   } catch (error) {
     next(error);
@@ -99,7 +99,7 @@ async function togglePromotionStatus(req, res, next) {
 
 async function deletePromotion(req, res, next) {
   try {
-    var result = await chainService.deletePromotion(req.params.id);
+    var result = await chainService.deletePromotion(req.params.id, req.user);
     res.json({ data: result });
   } catch (error) {
     next(error);

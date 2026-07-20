@@ -14,21 +14,7 @@ function getDelegate(resource) {
 
 function findMany(resource, options) {
   var opt = options || {};
-  if (resource.name === 'delivery_orders') {
-    opt.include = Object.assign({}, opt.include, {
-      order: {
-        include: {
-          invoices: true,
-          orderItems: {
-            include: {
-              menuItem: true
-            }
-          }
-        }
-      },
-      deliveryEmployee: true
-    });
-  } else if (resource.name === 'employees') {
+  if (resource.name === 'employees') {
     opt.include = Object.assign({}, opt.include, {
       role: true,
       branch: true
@@ -39,21 +25,7 @@ function findMany(resource, options) {
 
 function findById(resource, id) {
   var query = { where: { id: id } };
-  if (resource.name === 'delivery_orders') {
-    query.include = {
-      order: {
-        include: {
-          invoices: true,
-          orderItems: {
-            include: {
-              menuItem: true
-            }
-          }
-        }
-      },
-      deliveryEmployee: true
-    };
-  } else if (resource.name === 'employees') {
+  if (resource.name === 'employees') {
     query.include = {
       role: true,
       branch: true

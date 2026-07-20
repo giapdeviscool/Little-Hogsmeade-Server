@@ -65,7 +65,7 @@ function isOwner(user) {
 
 function isChainAdmin(user) {
   var roleName = normalizeRoleName(user.roleName);
-  return roleName.indexOf('chain admin') > -1 || roleName.indexOf('admin') > -1 || roleName.indexOf('manager') > -1;
+  return roleName.indexOf('chain admin') > -1 || roleName.indexOf('admin') > -1;
 }
 
 function verifyRole(allowedRoles) {
