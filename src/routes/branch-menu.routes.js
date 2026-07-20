@@ -11,7 +11,7 @@ router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
 router.get('/:branchId/menu', async function(req, res, next) {
   try {
     var categories = await prisma.category.findMany({
-      where: { branchId: null, isActive: true },
+      where: { isActive: true },
       orderBy: { displayOrder: 'asc' },
       select: { id: true, name: true, displayOrder: true, isActive: true }
     });
