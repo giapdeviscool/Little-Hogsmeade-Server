@@ -18,7 +18,7 @@ router.get('/bank-webhook', (req, res) => {
 router.post('/bank-webhook', sepayAuth, paymentWebhookController.handleSePayWebhook);
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier']));
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'cashier']));
 
 
 

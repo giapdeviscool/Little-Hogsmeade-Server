@@ -106,7 +106,6 @@ model Employee {
   timesheetsEmployeeId    Timesheet[]        @relation("Timesheet_employeeId_to_Employee")
   timesheetsApprovedBy    Timesheet[]        @relation("Timesheet_approvedBy_to_Employee")
   orders                  Order[]            @relation("Order_employeeId_to_Employee")
-  deliveryOrders          DeliveryOrder[]    @relation("DeliveryOrder_deliveryEmployeeId_to_Employee")
   stockTransactions       StockTransaction[] @relation("StockTransaction_employeeId_to_Employee")
   expenses                Expense[]          @relation("Expense_employeeId_to_Employee")
   posts                   Post[]             @relation("Post_authorId_to_Employee")
@@ -486,7 +485,6 @@ model Order {
   pointTransactions PointTransaction[] @relation("PointTransaction_orderId_to_Order")
   orderItems        OrderItem[]        @relation("OrderItem_orderId_to_Order")
   invoices          Invoice[]          @relation("Invoice_orderId_to_Order")
-  deliveryOrders    DeliveryOrder[]    @relation("DeliveryOrder_orderId_to_Order")
   voucherUsages     VoucherUsage[]     @relation("VoucherUsage_orderId_to_Order")
 
   @@map("orders")
@@ -564,26 +562,6 @@ model Payment {
   @@map("payments")
 }
 
-model DeliveryOrder {
-  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
-  orderId            String    @unique @map("order_id") @db.ObjectId
-  customerName       String    @map("customer_name")
-  customerPhone      String    @map("customer_phone")
-  deliveryAddress    String    @map("delivery_address")
-  lat                Float?
-  lng                Float?
-  deliveryEmployeeId String?   @map("delivery_employee_id") @db.ObjectId
-  estimatedTime      DateTime? @map("estimated_time")
-  deliveredAt        DateTime? @map("delivered_at")
-  deliveryFee        Float     @default(0.00) @map("delivery_fee")
-  status             String
-  note               String?
-
-  order            Order     @relation("DeliveryOrder_orderId_to_Order", fields: [orderId], references: [id])
-  deliveryEmployee Employee? @relation("DeliveryOrder_deliveryEmployeeId_to_Employee", fields: [deliveryEmployeeId], references: [id])
-
-  @@map("delivery_orders")
-}
 
 model StockTransaction {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId

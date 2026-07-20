@@ -8,7 +8,7 @@ var PIN_LENGTH = 6;
 var MAX_PAGE_SIZE = 50;
 var VALID_STATUSES = ['active', 'on_leave', 'resigned', 'inactive'];
 var REVOKED_STATUSES = ['resigned', 'inactive'];
-var PRIVILEGED_ROLES = ['owner', 'chain owner', 'chain admin', 'admin', 'manager'];
+var PRIVILEGED_ROLES = ['owner', 'chain owner', 'chain admin', 'admin'];
 
 // ──────────────────────────────────────────────
 // UC55 – View the Staff list

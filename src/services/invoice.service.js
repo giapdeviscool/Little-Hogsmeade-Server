@@ -20,7 +20,7 @@ async function getInvoices(query, user) {
 
   var roleName = (user && user.roleName || '').trim().toLowerCase();
   var isOwner = roleName.indexOf('owner') > -1 || roleName.indexOf('chain owner') > -1;
-  var isAdmin = roleName.indexOf('chain admin') > -1 || roleName.indexOf('admin') > -1 || roleName.indexOf('manager') > -1;
+  var isAdmin = roleName.indexOf('chain admin') > -1 || roleName.indexOf('admin') > -1;
   var isCashier = roleName.indexOf('cashier') > -1;
 
   if (isCashier) {

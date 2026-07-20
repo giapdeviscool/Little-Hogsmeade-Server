@@ -10,7 +10,7 @@ async function getMenuItems(query, user) {
   // Role-based data isolation
   var roleName = (user.roleName || '').trim().toLowerCase();
   var isOwner = roleName.includes('owner');
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
   var isCashier = roleName.includes('cashier');
 
   if (isOwner) {
@@ -86,7 +86,7 @@ async function createMenuItem(data, user, fileUrl) {
   var branchId = null;
   var roleName = (user.roleName || '').trim().toLowerCase();
   var isOwner = roleName.includes('owner');
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
 
   // Treat empty string as explicit global request
   var rawBranchId = data.branchId
@@ -123,7 +123,7 @@ async function createMenuItem(data, user, fileUrl) {
 async function updateMenuItemStatus(id, isActive, user) {
   var roleName = (user.roleName || '').trim().toLowerCase();
   var isOwner = roleName.includes('owner');
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
   var isCashier = roleName.includes('cashier');
 
   if (!isOwner && !isAdmin && !isCashier) {
@@ -162,7 +162,7 @@ async function updateMenuItemStatus(id, isActive, user) {
 async function updateMenuItem(id, data, user, fileUrl) {
   var roleName = (user.roleName || '').trim().toLowerCase();
   var isOwner = roleName.includes('owner');
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
 
   if (!isOwner && !isAdmin) {
     var errRole = new Error('Không có quyền cập nhật món ăn');

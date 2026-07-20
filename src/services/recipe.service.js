@@ -10,7 +10,7 @@ async function getRecipes(query, user) {
   // BR-BOM02: Strict Data Isolation
   var roleName = (user.roleName || '').trim().toLowerCase();
   var isOwner = roleName.includes('owner');
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
   var isStaff = roleName.includes('staff') || roleName.includes('cashier');
 
   if (isOwner) {
@@ -90,7 +90,7 @@ var prisma = require('../lib/prisma');
 
 async function setMenuItemRecipes(menuItemId, variantId, recipes, user) {
   var roleName = (user.roleName || '').trim().toLowerCase();
-  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin') || roleName.includes('manager');
+  var isAdmin = roleName.includes('chain admin') || roleName.includes('admin');
   var isOwner = roleName.includes('owner');
 
   if (!isAdmin && !isOwner) {

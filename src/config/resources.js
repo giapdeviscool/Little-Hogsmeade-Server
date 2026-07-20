@@ -25,7 +25,6 @@ var resources = [
   { name: 'order_item_toppings', path: 'order-item-toppings', model: 'OrderItemTopping', delegate: 'orderItemTopping' },
   { name: 'invoices', path: 'invoices', model: 'Invoice', delegate: 'invoice' },
   { name: 'payments', path: 'payments', model: 'Payment', delegate: 'payment' },
-  { name: 'delivery_orders', path: 'delivery-orders', model: 'DeliveryOrder', delegate: 'deliveryOrder' },
   { name: 'stock_transactions', path: 'stock-transactions', model: 'StockTransaction', delegate: 'stockTransaction' },
   { name: 'purchase_orders', path: 'purchase-orders', model: 'PurchaseOrder', delegate: 'purchaseOrder' },
   { name: 'purchase_order_items', path: 'purchase-order-items', model: 'PurchaseOrderItem', delegate: 'purchaseOrderItem' },

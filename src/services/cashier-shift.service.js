@@ -82,7 +82,7 @@ async function requestClosure(shiftId, branchId) {
     expected_cash_system: expectedCash,
     cash_sales: cashSales,
     cash_refunds: 0,
-    message: 'Please request the TOTP code from the manager.'
+    message: 'Please request the TOTP code from the owner/chain admin.'
   };
 }
 

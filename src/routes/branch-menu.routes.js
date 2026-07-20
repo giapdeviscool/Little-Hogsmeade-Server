@@ -5,7 +5,7 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
 
 // GET menu cho branch: global items + branch-specific items
 router.get('/:branchId/menu', async function(req, res, next) {

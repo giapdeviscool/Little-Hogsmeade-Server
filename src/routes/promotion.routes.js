@@ -7,7 +7,7 @@ var router = express.Router();
 router.get('/', chainController.getPromotions);
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
 
 router.post('/', chainController.createPromotion);
 router.put('/:id', chainController.updatePromotion);

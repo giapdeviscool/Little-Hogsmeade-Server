@@ -5,7 +5,7 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager']));
+router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
 
 
 // All payroll routes require authentication

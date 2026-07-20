@@ -5,7 +5,7 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'manager', 'cashier', 'kitchen', 'staff']));
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'cashier', 'kitchen', 'staff']));
 
 
 // Check-in/check-out do NOT require JWT — they use PIN-based auth
