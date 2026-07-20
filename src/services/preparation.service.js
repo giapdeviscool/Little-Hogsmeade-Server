@@ -26,8 +26,26 @@ class PreparationService {
 
     if (preparation.globalIngredientId !== null) {
       const globalPrep = await preparationRepo.getPreparationRecipeById(preparation.globalIngredientId);
-      if (globalPrep) {
-        preparation.preparationIngredients = globalPrep.preparationIngredients || [];
+      if (globalPrep && globalPrep.preparationIngredients) {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        const localRecipes = [];
+        for (const item of globalPrep.preparationIngredients) {
+          const localRaw = await prisma.ingredient.findFirst({
+            where: {
+              globalIngredientId: item.rawIngredientId,
+              branchId: preparation.branchId
+            }
+          });
+          if (localRaw) {
+            localRecipes.push({
+              ...item,
+              rawIngredientId: localRaw.id,
+              rawIngredient: localRaw
+            });
+          }
+        }
+        preparation.preparationIngredients = localRecipes;
       }
     }
 
