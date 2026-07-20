@@ -539,6 +539,67 @@ async function resetPin(req, res, next) {
   }
 }
 
+async function checkPin(req, res, next) {
+  try {
+    const customerId = req.body.customerId || req.query.customerId;
+    const pin = req.body.pin || req.query.pin;
+
+    if (!customerId || !pin) {
+      return res.status(400).json({ message: 'Customer ID and PIN are required' });
+    }
+
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId }
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    if (customer.failedPinAttempts >= 5) {
+      return res.status(403).json({ message: 'Tài khoản của bạn đã bị khóa mã PIN do nhập sai quá 5 lần. Vui lòng đến cửa hàng để được hỗ trợ cấp lại mã.' });
+    }
+
+    if (!customer.passwordHash) {
+      return res.status(400).json({ message: 'Mã PIN chưa được thiết lập.' });
+    }
+
+    const isValid = await bcrypt.compare(pin, customer.passwordHash);
+
+    if (!isValid) {
+      const updatedCustomer = await prisma.customer.update({
+        where: { id: customer.id },
+        data: { failedPinAttempts: customer.failedPinAttempts + 1 }
+      });
+      
+      if (updatedCustomer.failedPinAttempts >= 5) {
+        return res.status(403).json({ message: 'Tài khoản của bạn đã bị khóa mã PIN do nhập sai quá 5 lần. Vui lòng đến cửa hàng để được hỗ trợ cấp lại mã.' });
+      }
+      
+      return res.status(401).json({ message: `Mã PIN không đúng. Bạn còn ${5 - updatedCustomer.failedPinAttempts} lần nhập.` });
+    }
+
+    if (customer.failedPinAttempts > 0) {
+      await prisma.customer.update({
+        where: { id: customer.id },
+        data: { failedPinAttempts: 0 }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: customer.id,
+        fullName: customer.fullName,
+        phone: customer.phone
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   listCustomers: listCustomers,
   getCustomerById: getCustomerById,
@@ -551,6 +612,7 @@ module.exports = {
   customerLogin: customerLogin,
   updateCustomerMembership: updateCustomerMembership,
   changePin: changePin,
-  resetPin: resetPin
+  resetPin: resetPin,
+  checkPin: checkPin
 };
 
