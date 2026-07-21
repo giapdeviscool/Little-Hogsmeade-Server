@@ -1,5 +1,18 @@
 var reservationService = require('../services/reservation.service');
 
+async function getReservations(req, res, next) {
+  try {
+    var branchId = req.query.branchId;
+    var result = await reservationService.getReservations(req.user, branchId);
+    res.json({
+      status: 'success',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function checkIn(req, res, next) {
   try {
     var result = await reservationService.checkInReservation(req.params.id, req.body, req.user);
@@ -13,13 +26,26 @@ async function checkIn(req, res, next) {
   }
 }
 
-async function markNoShow(req, res, next) {
+async function updateStatus(req, res, next) {
   try {
-    var result = await reservationService.markReservationNoShow(req.params.id, req.user);
+    var result = await reservationService.updateReservationStatus(req.params.id, req.body.status, req.user);
     res.json({
       status: 'success',
-      message: 'Reservation marked as no-show',
-      data: result
+      message: 'Cập nhật trạng thái thành công',
+      data: result.reservation
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function assignTable(req, res, next) {
+  try {
+    var result = await reservationService.assignTableToReservation(req.params.id, req.body.tableId, req.user);
+    res.json({
+      status: 'success',
+      message: 'Đã gán bàn thành công',
+      data: result.reservation
     });
   } catch (error) {
     next(error);
@@ -27,6 +53,8 @@ async function markNoShow(req, res, next) {
 }
 
 module.exports = {
+  getReservations: getReservations,
   checkIn: checkIn,
-  markNoShow: markNoShow
+  updateStatus: updateStatus,
+  assignTable: assignTable
 };

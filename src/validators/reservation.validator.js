@@ -10,17 +10,17 @@ var checkInSchema = {
   }
 };
 
-var noShowSchema = {
+var statusSchema = {
   status: {
     required: true,
     validate: function(value) {
-      return typeof value === 'string' && value.trim().toLowerCase() === 'no_show';
+      return typeof value === 'string' && ['cancelled', 'no_show', 'pending', 'confirmed', 'completed'].includes(value.trim().toLowerCase());
     },
-    message: 'status must be no_show'
+    message: 'status must be cancelled, no_show, pending, confirmed, or completed'
   }
 };
 
 module.exports = {
   checkInSchema: checkInSchema,
-  noShowSchema: noShowSchema
+  statusSchema: statusSchema
 };

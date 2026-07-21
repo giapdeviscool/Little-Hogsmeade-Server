@@ -36,11 +36,18 @@ async function getTableLayout(branchId, query, currentUser) {
             current_order_id: table.status === 'occupied'
               ? (table.currentOrderId || (table.orders[0] ? table.orders[0].id : null))
               : null,
+            guest_name: table.status === 'occupied' && table.orders[0] && table.orders[0].customer 
+              ? table.orders[0].customer.fullName 
+              : null,
             updated_at: table.updatedAt
           };
 
           if (table.status === 'reserved') {
             result.reservation_id = table.reservationId || (table.reservations[0] ? table.reservations[0].id : null);
+            if (table.reservations[0]) {
+              result.guest_name = table.reservations[0].guestName;
+              result.reserved_time = table.reservations[0].reservedTime;
+            }
           }
 
           return result;
@@ -226,7 +233,11 @@ function assertEmployeeAccess(currentUser, branchId) {
     throwHttpError(403, 'Staff, Cashier, Chain Admin or Owner role is required');
   }
 
-  if (!authMiddleware.isOwner(currentUser) && currentUser.branchId !== branchId) {
+  if (authMiddleware.isOwner(currentUser) || authMiddleware.isChainAdmin(currentUser)) {
+    return;
+  }
+
+  if (String(currentUser.branchId) !== String(branchId)) {
     throwHttpError(403, 'You can only view table layout for your own branch');
   }
 }

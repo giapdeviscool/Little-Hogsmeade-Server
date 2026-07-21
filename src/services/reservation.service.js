@@ -4,7 +4,40 @@ var reservationRepository = require('../repositories/reservation.repository');
 var socket = require('../realtime/socket');
 const orderRepository = require('../repositories/order.repository');
 
-var ACTIVE_RESERVATION_STATUSES = ['pending', 'confirmed', 'reserved'];
+var ACTIVE_RESERVATION_STATUSES = ['pending', 'confirmed', 'reserved', 'checked_in'];
+
+async function getReservations(currentUser, queryBranchId) {
+  if (!currentUser || currentUser.type !== 'employee') {
+    throwHttpError(403, 'Staff, Cashier, Chain Admin or Owner role is required');
+  }
+
+  var filter = {};
+
+  if (authMiddleware.isOwner(currentUser) || authMiddleware.isChainAdmin(currentUser)) {
+    if (queryBranchId) {
+      filter.branchId = queryBranchId;
+    }
+  } else {
+    filter.branchId = currentUser.branchId;
+  }
+
+  var reservations = await prisma.reservation.findMany({
+    where: filter,
+    orderBy: {
+      reservedDate: 'desc'
+    },
+    include: {
+      table: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
+    }
+  });
+
+  return reservations;
+}
 
 async function checkInReservation(reservationId, payload, currentUser) {
   var reservation = await getAuthorizedReservation(reservationId, currentUser);
@@ -53,18 +86,18 @@ async function checkInReservation(reservationId, payload, currentUser) {
   return result;
 }
 
-async function markReservationNoShow(reservationId, currentUser) {
+async function updateReservationStatus(reservationId, status, currentUser) {
   var reservation = await getAuthorizedReservation(reservationId, currentUser);
   assertActiveReservation(reservation);
 
   var result = await prisma.$transaction(async function (tx) {
     var updatedReservation = await tx.reservation.update({
       where: { id: reservation.id },
-      data: { status: 'no_show' }
+      data: { status: status }
     });
     var releasedTable = null;
 
-    if (reservation.tableId) {
+    if (reservation.tableId && (status === 'no_show' || status === 'cancelled' || status === 'completed')) {
       var currentTable = await tx.table.findUnique({
         where: { id: reservation.tableId },
         select: { id: true, reservationId: true }
@@ -97,6 +130,56 @@ async function markReservationNoShow(reservationId, currentUser) {
   return result;
 }
 
+async function assignTableToReservation(reservationId, tableId, currentUser) {
+  var reservation = await getAuthorizedReservation(reservationId, currentUser);
+  assertActiveReservation(reservation);
+
+  assertValidObjectId(tableId, 'table id');
+  var table = await prisma.table.findUnique({
+    where: { id: tableId },
+    select: { id: true, status: true, area: { select: { branchId: true } } }
+  });
+
+  if (!table) {
+    throwHttpError(404, 'Table not found');
+  }
+
+  var tableBranchId = table.branchId || (table.area && table.area.branchId);
+  if (String(tableBranchId) !== String(reservation.branchId)) {
+    throwHttpError(400, 'Table does not belong to the same branch as reservation');
+  }
+
+  var result = await prisma.$transaction(async function (tx) {
+    var updatedReservation = await tx.reservation.update({
+      where: { id: reservation.id },
+      data: {
+        tableId: table.id,
+        status: 'confirmed'
+      }
+    });
+
+    var updatedTable = await tx.table.update({
+      where: { id: table.id },
+      data: {
+        reservationId: reservation.id,
+        status: table.status === 'available' ? 'reserved' : table.status
+      }
+    });
+
+    return { reservation: updatedReservation, table: updatedTable };
+  });
+
+  if (result.table) {
+    socket.emitTableStatusUpdated({
+      tableId: result.table.id,
+      newStatus: result.table.status,
+      branchId: reservation.branchId
+    });
+  }
+
+  return result;
+}
+
 async function getAuthorizedReservation(reservationId, currentUser) {
   assertValidObjectId(reservationId, 'reservation id');
 
@@ -111,7 +194,7 @@ async function getAuthorizedReservation(reservationId, currentUser) {
 
 function assertActiveReservation(reservation) {
   if (ACTIVE_RESERVATION_STATUSES.indexOf(String(reservation.status).toLowerCase()) === -1) {
-    throwHttpError(400, 'Only pending, confirmed, or reserved reservations can be updated');
+    throwHttpError(400, 'Only pending, confirmed, reserved, or checked_in reservations can be updated');
   }
 }
 
@@ -120,7 +203,11 @@ function assertEmployeeAccess(currentUser, branchId) {
     throwHttpError(403, 'Staff, Cashier, Chain Admin or Owner role is required');
   }
 
-  if (!authMiddleware.isOwner(currentUser) && currentUser.branchId !== branchId) {
+  if (authMiddleware.isOwner(currentUser) || authMiddleware.isChainAdmin(currentUser)) {
+    return;
+  }
+
+  if (String(currentUser.branchId) !== String(branchId)) {
     throwHttpError(403, 'You can only manage reservations for your own branch');
   }
 }
@@ -162,6 +249,8 @@ function throwHttpError(statusCode, message) {
 }
 
 module.exports = {
+  getReservations: getReservations,
   checkInReservation: checkInReservation,
-  markReservationNoShow: markReservationNoShow
+  updateReservationStatus: updateReservationStatus,
+  assignTableToReservation: assignTableToReservation
 };

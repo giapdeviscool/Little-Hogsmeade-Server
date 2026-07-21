@@ -47,7 +47,10 @@ function findAreasWithTables(branchId, filters) {
             },
             orderBy: { createdAt: 'desc' },
             take: 1,
-            select: { id: true }
+            select: { 
+              id: true,
+              customer: { select: { fullName: true } }
+            }
           },
           reservations: {
             where: {
@@ -55,7 +58,11 @@ function findAreasWithTables(branchId, filters) {
             },
             orderBy: { reservedDate: 'asc' },
             take: 1,
-            select: { id: true }
+            select: { 
+              id: true,
+              guestName: true,
+              reservedTime: true
+            }
           }
         }
       }
