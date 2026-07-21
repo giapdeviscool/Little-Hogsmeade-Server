@@ -68,7 +68,6 @@ async function checkInReservation(reservationId, payload, currentUser) {
       data: {
         status: 'occupied',
         currentOrderId: null,
-        reservationId: null,
         guestCount: guestCount,
         note: reservation.note
       }

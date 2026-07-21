@@ -33,6 +33,7 @@ async function getTableLayout(branchId, query, currentUser) {
             name: table.name,
             capacity: table.capacity,
             status: table.status,
+            guest_count: table.guestCount,
             current_order_id: table.status === 'occupied'
               ? (table.currentOrderId || (table.orders[0] ? table.orders[0].id : null))
               : null,
@@ -42,11 +43,17 @@ async function getTableLayout(branchId, query, currentUser) {
             updated_at: table.updatedAt
           };
 
-          if (table.status === 'reserved') {
-            result.reservation_id = table.reservationId || (table.reservations[0] ? table.reservations[0].id : null);
-            if (table.reservations[0]) {
-              result.guest_name = table.reservations[0].guestName;
-              result.reserved_time = table.reservations[0].reservedTime;
+          if (table.status === 'reserved' || table.status === 'occupied') {
+            var activeRes = table.reservations[0];
+            var shouldAttach = activeRes && (table.status === 'reserved' || activeRes.id === table.reservationId);
+            
+            if (shouldAttach) {
+              result.reservation_id = table.reservationId || activeRes.id;
+              result.guest_name = result.guest_name || activeRes.guestName;
+              result.guest_phone = activeRes.guestPhone;
+              result.guest_count = result.guest_count || activeRes.guestCount;
+              result.note = result.note || activeRes.note;
+              result.reserved_time = activeRes.reservedTime;
             }
           }
 

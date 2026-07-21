@@ -38,6 +38,7 @@ function findAreasWithTables(branchId, filters) {
           name: true,
           capacity: true,
           status: true,
+          guestCount: true,
           currentOrderId: true,
           reservationId: true,
           updatedAt: true,
@@ -54,13 +55,16 @@ function findAreasWithTables(branchId, filters) {
           },
           reservations: {
             where: {
-              status: { in: ['pending', 'confirmed', 'reserved'] }
+              status: { in: ['pending', 'confirmed', 'reserved', 'checked_in'] }
             },
             orderBy: { reservedDate: 'asc' },
             take: 1,
             select: { 
               id: true,
               guestName: true,
+              guestPhone: true,
+              guestCount: true,
+              note: true,
               reservedTime: true
             }
           }
