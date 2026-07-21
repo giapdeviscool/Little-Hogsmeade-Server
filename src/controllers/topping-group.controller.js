@@ -2,7 +2,7 @@ var toppingGroupService = require('../services/topping-group.service');
 
 async function getToppingGroups(req, res, next) {
   try {
-    var result = await toppingGroupService.getToppingGroups(req.user);
+    var result = await toppingGroupService.getToppingGroups(req.query, req.user);
     res.json({ message: 'Lấy danh sách nhóm Topping thành công', data: result });
   } catch (error) {
     next(error);

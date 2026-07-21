@@ -16,7 +16,11 @@ async function getMenuItems(query, user) {
   if (isOwner) {
     // Owner sees all, or can filter by branchId explicitly if passed
     if (query.branchId) {
-      filters.branchId = query.branchId;
+      if (query.branchId === 'global') {
+        filters.branchId = null;
+      } else {
+        filters.branchId = query.branchId;
+      }
     }
   } else if (isAdmin || isCashier) {
     // See global items (branchId: null) or their branch items
@@ -50,8 +54,47 @@ async function getMenuItems(query, user) {
   var total = await menuItemRepository.countMenuItems(filters);
   var items = await menuItemRepository.findMenuItems(filters, skip, limit);
 
+  var processedItems = items.map(function(item) {
+    var isAvailable = item.isActive === true;
+
+    if (isAvailable && item.recipes && item.recipes.length > 0) {
+      for (var i = 0; i < item.recipes.length; i++) {
+        var recipe = item.recipes[i];
+        var requiredAmount = recipe.quantityRequired;
+        var currentStock = recipe.ingredient ? recipe.ingredient.currentStock : 0;
+
+        if (currentStock <= 0 || requiredAmount > currentStock) {
+          isAvailable = false;
+          break;
+        }
+      }
+    }
+
+    var processed = Object.assign({}, item);
+    processed.isAvailable = isAvailable;
+    return processed;
+  });
+
+  // Custom sort:
+  // 1. isActive=true & isAvailable=true
+  // 2. isActive=true & isAvailable=false
+  // 3. isActive=false
+  processedItems.sort(function(a, b) {
+    var getRank = function(item) {
+      if (item.isActive && item.isAvailable) return 1;
+      if (item.isActive && !item.isAvailable) return 2;
+      return 3;
+    };
+    
+    var rankDiff = getRank(a) - getRank(b);
+    if (rankDiff !== 0) return rankDiff;
+    
+    // Fallback to original order if ranks are same (which was category display order + name)
+    return 0; 
+  });
+
   return {
-    items: items,
+    items: processedItems,
     pagination: {
       total: total,
       page: page,

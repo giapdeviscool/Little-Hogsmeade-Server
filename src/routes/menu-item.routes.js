@@ -7,7 +7,7 @@ var imageUploadMiddleware = require('../middlewares/image-upload.middleware');
 var router = express.Router();
 
 router.use(authMiddleware.authenticate);
-router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'cashier']));
+router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'cashier', 'staff']));
 
 
 // UC65: View Menu Items

@@ -8,7 +8,7 @@ router.use(authMiddleware.authenticate);
 router.use(authMiddleware.verifyRole(['owner', 'chain admin', 'cashier']));
 
 router.get('/', invoiceValidator.validateGetInvoicesQuery, invoiceController.getInvoices);
-router.get('/admin', authMiddleware.verifyRole(['chain_admin']), invoiceController.getAdminInvoices);
+router.get('/admin', authMiddleware.verifyRole(['owner', 'chain admin', 'admin']), invoiceController.getAdminInvoices);
 router.get('/:id', invoiceValidator.validateGetInvoiceByIdParam, invoiceController.getInvoiceById);
 
 module.exports = router;
