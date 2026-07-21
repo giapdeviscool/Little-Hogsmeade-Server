@@ -8,7 +8,7 @@ var router = express.Router();
 // All employee routes require authentication + Owner/Chain Admin role
 router.use(authMiddleware.authenticate);
 
-router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
+
 
 
 // UC55: View the Staff list
