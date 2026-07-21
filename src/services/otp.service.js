@@ -36,7 +36,7 @@ async function verify2FA(userId, code) {
   });
 
   if (!employee) {
-    throwHttpError(404, {message: 'Employee not found'});
+    throwHttpError(404, 'Employee not found');
   }
 
   // 1. If tempTotpSecret exists, try to verify and promote it
@@ -74,13 +74,13 @@ async function verify2FA(userId, code) {
   secret = secret || process.env.ADMIN_TOTP_SECRET;
 
   if (!secret) {
-    throwHttpError(400, {message: 'No Admin TOTP secret configured'});
+    throwHttpError(400, 'No Admin TOTP secret configured');
   }
 
   const verification = verifySync({ token: code, secret: secret });
   const isValid = verification && verification.valid;
   if (!isValid) {
-    throwHttpError(400, {message: 'Invalid or expired Admin OTP token.'});
+    throwHttpError(400, 'Invalid or expired Admin OTP token.');
   }
 
   return { success: true };

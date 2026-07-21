@@ -168,7 +168,6 @@ async function quickRegisterCustomer(req, res, next) {
       var customer = await tx.customer.create({
         data: {
           phone: phone,
-          name: name,
           fullName: name,
           email: phone + '@lh-quick.com',
           source: 'walk-in',
