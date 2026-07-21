@@ -211,11 +211,23 @@ async function findAdminInvoices(filters, skip, limit) {
     where: where
   });
 
-  var results = await Promise.all([dataPromise, countPromise]);
+  var totalRevenuePromise = prisma.invoice.aggregate({
+    where: { ...where, status: 'paid' },
+    _sum: { totalAmount: true }
+  });
+
+  var totalRefundPromise = prisma.invoice.aggregate({
+    where: { ...where, status: 'refunded' },
+    _sum: { totalAmount: true }
+  });
+
+  var results = await Promise.all([dataPromise, countPromise, totalRevenuePromise, totalRefundPromise]);
 
   return {
     data: results[0],
-    totalCount: results[1]
+    totalCount: results[1],
+    totalRevenue: results[2]._sum.totalAmount || 0,
+    totalRefund: results[3]._sum.totalAmount || 0
   };
 }
 

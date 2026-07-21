@@ -208,6 +208,10 @@ async function getAdminInvoices(query, user) {
 
   return {
     data: formattedData,
+    summary: {
+      totalRevenue: result.totalRevenue || 0,
+      totalRefund: result.totalRefund || 0
+    },
     pagination: {
       totalDocs: totalDocs,
       totalPages: totalPages === 0 ? 1 : totalPages,

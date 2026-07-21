@@ -41,6 +41,7 @@ async function getAdminInvoices(req, res, next) {
     res.status(200).json({
       success: true,
       pagination: result.pagination,
+      summary: result.summary,
       data: result.data
     });
   } catch (error) {
