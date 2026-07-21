@@ -117,7 +117,8 @@ function calculatePayrollSummaries(employees, timesheets) {
     }
 
     var baseSalary = emp.baseSalary || 0;
-    var hourlyRate = baseSalary / STANDARD_HOURS_PER_MONTH;
+    // Tạm thời coi Lương cơ bản là Lương theo giờ (theo yêu cầu)
+    var hourlyRate = baseSalary;
     var estimatedSalary = Math.round(hourlyRate * totalWorkedHours);
 
     summaries.push({
