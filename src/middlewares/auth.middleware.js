@@ -71,7 +71,7 @@ function isChainAdmin(user) {
 function verifyRole(allowedRoles) {
   return function(req, res, next) {
     if (!req.user || req.user.type !== 'employee') {
-      return res.status(403).json({ message: 'Owner or Chain Admin role is required' });
+      return res.status(403).json({ message: 'User must be an internal employee to perform this action' });
     }
 
     var userRole = normalizeRoleName(req.user.roleName);
@@ -81,7 +81,7 @@ function verifyRole(allowedRoles) {
     });
 
     if (!isAllowed) {
-      return res.status(403).json({ message: 'Owner or Chain Admin role is required' });
+      return res.status(403).json({ message: 'Role ' + allowedRoles.join(', ') + ' is required' });
     }
 
     next();
