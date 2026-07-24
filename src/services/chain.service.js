@@ -21,7 +21,7 @@ async function getDashboard(query) {
       lte: dateRange.endDate
     }
   };
-  var branchWhere = branchId ? { id: branchId } : {};
+  var branchWhere = branchId ? { id: branchId, status: 'active' } : { status: 'active' };
 
   if (branchId) {
     assertValidObjectId(branchId, 'branchId');
