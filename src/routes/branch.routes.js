@@ -15,5 +15,6 @@ router.use(authMiddleware.verifyRole(['owner', 'chain admin']));
 router.post('/', authMiddleware.requireOwner, branchController.createBranch);
 router.put('/:id', branchController.updateBranch);
 router.patch('/:id/toggle-status', branchController.toggleBranchStatus);
+router.get('/:id/check-inactive', branchController.checkInactiveConstraints);
 
 module.exports = router;
