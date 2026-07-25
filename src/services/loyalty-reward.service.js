@@ -32,10 +32,15 @@ async function getRewards(user, query) {
     if (branchId === null) {
       filters.branchId = null;
     } else {
-      filters.OR = [
-        { branchId: branchId },
-        { branchId: null }
-      ];
+      var isEmployee = user && (user.type === 'employee' || (user.roleName && user.roleName.toLowerCase().includes('owner')));
+      if (isEmployee || (query && query.exactBranch === 'true')) {
+        filters.branchId = branchId;
+      } else {
+        filters.OR = [
+          { branchId: branchId },
+          { branchId: null }
+        ];
+      }
     }
   }
 
@@ -132,11 +137,7 @@ async function deleteReward(id, user) {
 
   assertBranchAccess(user, reward.branchId);
 
-  await loyaltyRewardRepository.updateReward(id, {
-    isActive: false,
-    isDeleted: true,
-    updatedAt: new Date()
-  });
+  await loyaltyRewardRepository.deleteReward(id);
 }
 
 function buildRewardData(payload, branchId) {

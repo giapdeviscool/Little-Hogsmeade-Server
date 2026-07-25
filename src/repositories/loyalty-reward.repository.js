@@ -53,10 +53,17 @@ function updateReward(id, data) {
   });
 }
 
+function deleteReward(id) {
+  return prisma.loyaltyReward.delete({
+    where: { id: id }
+  });
+}
+
 module.exports = {
   findRewards: findRewards,
   countRewards: countRewards,
   findRewardById: findRewardById,
   createReward: createReward,
-  updateReward: updateReward
+  updateReward: updateReward,
+  deleteReward: deleteReward
 };

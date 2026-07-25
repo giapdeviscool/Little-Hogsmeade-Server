@@ -433,12 +433,24 @@ async function updateCustomerMembership(req, res, next) {
     });
 
     if (!membership) {
-      if (tierId) {
+      if (tierId || totalPoints !== undefined) {
+        const points = totalPoints || 0;
+        let finalTierId = tierId;
+        
+        // Auto tier calculation
+        const tiers = await prisma.membershipTier.findMany({
+          orderBy: { minPoints: 'desc' }
+        });
+        const qualifiedTier = tiers.find(t => points >= t.minPoints);
+        if (qualifiedTier) {
+          finalTierId = qualifiedTier.id;
+        }
+
         const newMembership = await prisma.customerMembership.create({
           data: {
             customerId: id,
-            tierId,
-            totalPoints: totalPoints || 0
+            tierId: finalTierId,
+            totalPoints: points
           },
           include: { tier: true }
         });
@@ -447,11 +459,25 @@ async function updateCustomerMembership(req, res, next) {
       return res.status(404).json({ message: 'Customer membership not found' });
     }
 
+    let finalTierId = tierId || undefined;
+    const finalPoints = totalPoints !== undefined ? Number(totalPoints) : membership.totalPoints;
+    
+    // Auto tier calculation
+    if (totalPoints !== undefined) {
+      const tiers = await prisma.membershipTier.findMany({
+        orderBy: { minPoints: 'desc' }
+      });
+      const qualifiedTier = tiers.find(t => finalPoints >= t.minPoints);
+      if (qualifiedTier) {
+        finalTierId = qualifiedTier.id;
+      }
+    }
+
     const updated = await prisma.customerMembership.update({
       where: { id: membership.id },
       data: {
         totalPoints: totalPoints !== undefined ? Number(totalPoints) : undefined,
-        tierId: tierId || undefined
+        tierId: finalTierId
       },
       include: { tier: true }
     });
