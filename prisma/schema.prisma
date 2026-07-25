@@ -234,14 +234,17 @@ model ToppingGroup {
 }
 
 model Topping {
-  id             String  @id @default(auto()) @map("_id") @db.ObjectId
-  toppingGroupId String  @map("topping_group_id") @db.ObjectId
-  name           String
-  extraPrice     Float   @default(0.00) @map("extra_price")
-  baseCost       Float   @default(0.00) @map("base_cost")
-  isActive       Boolean @default(true) @map("is_active")
+  id               String  @id @default(auto()) @map("_id") @db.ObjectId
+  toppingGroupId   String  @map("topping_group_id") @db.ObjectId
+  ingredientId     String? @map("ingredient_id") @db.ObjectId
+  quantityRequired Float?  @map("quantity_required")
+  name             String
+  extraPrice       Float   @default(0.00) @map("extra_price")
+  baseCost         Float   @default(0.00) @map("base_cost")
+  isActive         Boolean @default(true) @map("is_active")
 
-  toppingGroup ToppingGroup @relation("Topping_toppingGroupId_to_ToppingGroup", fields: [toppingGroupId], references: [id])
+  toppingGroup     ToppingGroup @relation("Topping_toppingGroupId_to_ToppingGroup", fields: [toppingGroupId], references: [id])
+  ingredient       Ingredient?  @relation("Topping_ingredientId_to_Ingredient", fields: [ingredientId], references: [id])
 
   orderItemToppings OrderItemTopping[] @relation("OrderItemTopping_toppingId_to_Topping")
 
@@ -286,6 +289,7 @@ model Ingredient {
   preparationIngredients PreparationRecipe[] @relation("PreparationRecipe_preparationId")
   usedInPreparations     PreparationRecipe[] @relation("PreparationRecipe_rawIngredientId")
   stocktakeNoteItems     StocktakeNoteItem[] @relation("StocktakeNoteItem_ingredientId_to_Ingredient")
+  toppings               Topping[]           @relation("Topping_ingredientId_to_Ingredient")
 
   @@map("ingredients")
 }

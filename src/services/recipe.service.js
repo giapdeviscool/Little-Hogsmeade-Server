@@ -1,4 +1,5 @@
 var recipeRepository = require('../repositories/recipe.repository');
+var prisma = require('../lib/prisma');
 
 async function getRecipes(query, user) {
   var page = parseInt(query.page, 10) || 1;
@@ -49,7 +50,14 @@ async function getRecipes(query, user) {
   // Strip financial data if user is purely Staff
   var shouldMaskFinancials = isStaff && !isAdmin && !isOwner;
 
-  var formattedRecipes = rawRecipes.map(function(recipe) {
+  var targetBranchId = null;
+  if (isOwner && query.branchId) {
+    targetBranchId = query.branchId;
+  } else if (isAdmin || isStaff) {
+    targetBranchId = user.branchId;
+  }
+
+  var formattedRecipes = await Promise.all(rawRecipes.map(async function(recipe) {
     var result = {
       id: recipe.id,
       menuItemId: recipe.menuItemId,
@@ -64,16 +72,31 @@ async function getRecipes(query, user) {
       isIngredientActive: recipe.ingredient && typeof recipe.ingredient.isActive !== 'undefined' ? recipe.ingredient.isActive : true
     };
 
-    if (!shouldMaskFinancials && recipe.ingredient) {
-      // Typically ingredient might have unitCost or currentStock etc.
-      // If there's financial data, include it here.
-      // For now, we just pass unitCost if we had it, but Ingredient only has minStockLevel and currentStock.
-      // If cost data is added later, it goes here.
-      result.currentStock = recipe.ingredient.currentStock;
+    if (recipe.ingredient) {
+      if (targetBranchId && !recipe.ingredient.branchId) {
+        var localIng = await prisma.ingredient.findFirst({
+          where: {
+            globalIngredientId: recipe.ingredient.id,
+            branchId: targetBranchId
+          }
+        });
+        if (localIng) {
+          result.currentStock = localIng.currentStock;
+        } else {
+          result.currentStock = 0;
+        }
+      } else {
+        result.currentStock = recipe.ingredient.currentStock;
+      }
     }
 
+    if (!shouldMaskFinancials && recipe.ingredient) {
+      // reserved for future financial fields like unitCost
+    }
+
+
     return result;
-  });
+  }));
 
   return {
     items: formattedRecipes,
@@ -86,7 +109,6 @@ async function getRecipes(query, user) {
   };
 }
 
-var prisma = require('../lib/prisma');
 
 async function setMenuItemRecipes(menuItemId, variantId, recipes, user) {
   var roleName = (user.roleName || '').trim().toLowerCase();
