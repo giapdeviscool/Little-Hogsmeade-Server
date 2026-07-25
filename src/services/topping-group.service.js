@@ -68,6 +68,8 @@ async function createToppingGroup(data, user) {
         return {
           name: t.name,
           extraPrice: t.extraPrice,
+          ingredientId: t.ingredientId || null,
+          quantityRequired: t.quantityRequired ? parseFloat(t.quantityRequired) : null,
           isActive: true
         };
       })
@@ -163,6 +165,8 @@ async function updateToppingGroup(id, data, user) {
         return {
           name: t.name,
           extraPrice: t.extraPrice,
+          ingredientId: t.ingredientId || null,
+          quantityRequired: t.quantityRequired ? parseFloat(t.quantityRequired) : null,
           isActive: true
         };
       })
