@@ -21,7 +21,8 @@ async function findMenuItems(filters, skip, take) {
         include: {
           ingredient: {
             select: {
-              currentStock: true
+              currentStock: true,
+              branchId: true
             }
           }
         }

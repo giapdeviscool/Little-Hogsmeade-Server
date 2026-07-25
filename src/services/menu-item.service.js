@@ -51,8 +51,9 @@ async function getMenuItems(query, user) {
     filters.isActive = query.status === 'true';
   }
 
-  var total = await menuItemRepository.countMenuItems(filters);
-  var items = await menuItemRepository.findMenuItems(filters, skip, limit);
+  // Fetch all items without skip/limit to allow global in-memory sorting by dynamic isAvailable
+  var items = await menuItemRepository.findMenuItems(filters);
+  var total = items.length;
 
   /*
   var processedItems = items.map(function(item) {
@@ -90,9 +91,15 @@ async function getMenuItems(query, user) {
         var recipe = item.recipes[i];
         var requiredAmount = recipe.quantityRequired;
         
-        var localIngredient = await menuItemRepository.getLocalIngredient(recipe.ingredientId, targetBranchId);
-        
-        var currentStock = localIngredient ? localIngredient.currentStock : 0;
+        var currentStock = 0;
+        if (recipe.ingredient) {
+          if (recipe.ingredient.branchId === null) {
+            var localIngredient = await menuItemRepository.getLocalIngredient(recipe.ingredientId, targetBranchId);
+            currentStock = localIngredient ? localIngredient.currentStock : 0;
+          } else {
+            currentStock = recipe.ingredient.currentStock;
+          }
+        }
 
         if (currentStock <= 0 || requiredAmount > currentStock) {
           isAvailable = false;
@@ -124,8 +131,10 @@ async function getMenuItems(query, user) {
     return 0; 
   });
 
+  var paginatedItems = processedItems.slice(skip, skip + limit);
+
   return {
-    items: processedItems,
+    items: paginatedItems,
     pagination: {
       total: total,
       page: page,
