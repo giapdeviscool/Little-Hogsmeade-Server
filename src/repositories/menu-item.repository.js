@@ -21,7 +21,8 @@ async function findMenuItems(filters, skip, take) {
         include: {
           ingredient: {
             select: {
-              currentStock: true
+              currentStock: true,
+              branchId: true
             }
           }
         }
@@ -117,6 +118,15 @@ async function moveItemsToCategory(menuItemIds, categoryId) {
   });
 }
 
+async function getLocalIngredient(globalIngredientId, branchId) {
+  return prisma.ingredient.findFirst({
+    where: {
+      globalIngredientId: globalIngredientId,
+      branchId: branchId
+    }
+  });
+}
+
 module.exports = {
   findMenuItems: findMenuItems,
   countMenuItems: countMenuItems,
@@ -129,5 +139,6 @@ module.exports = {
   findCurrentToppingGroupAssignments: findCurrentToppingGroupAssignments,
   assignToppingGroups: assignToppingGroups,
   removeToppingGroupAssignments: removeToppingGroupAssignments,
-  moveItemsToCategory: moveItemsToCategory
+  moveItemsToCategory: moveItemsToCategory,
+  getLocalIngredient: getLocalIngredient
 };
