@@ -6,6 +6,10 @@ var reservationController = require('../controllers/reservation.controller');
 
 var router = express.Router();
 
+router.get('/lookup',
+  reservationController.lookupReservation
+);
+
 router.get('/',
   authMiddleware.authenticate,
   reservationController.getReservations

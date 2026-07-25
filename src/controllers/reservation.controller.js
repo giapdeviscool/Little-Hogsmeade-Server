@@ -52,9 +52,23 @@ async function assignTable(req, res, next) {
   }
 }
 
+async function lookupReservation(req, res, next) {
+  try {
+    var phone = req.query.phone;
+    var result = await reservationService.lookupByPhone(phone);
+    res.json({
+      status: 'success',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getReservations: getReservations,
   checkIn: checkIn,
   updateStatus: updateStatus,
-  assignTable: assignTable
+  assignTable: assignTable,
+  lookupReservation: lookupReservation
 };
