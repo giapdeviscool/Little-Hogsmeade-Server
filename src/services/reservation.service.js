@@ -247,9 +247,34 @@ function throwHttpError(statusCode, message) {
   throw error;
 }
 
+async function lookupByPhone(phone) {
+  if (!phone || typeof phone !== 'string' || phone.trim() === '') {
+    throwHttpError(400, 'Phone number is required');
+  }
+  
+  var normalizedPhone = phone.trim();
+
+  var reservations = await prisma.reservation.findMany({
+    where: { guestPhone: normalizedPhone },
+    orderBy: { reservedDate: 'desc' },
+    include: {
+      branch: {
+        select: {
+          id: true,
+          name: true,
+          address: true
+        }
+      }
+    }
+  });
+
+  return reservations;
+}
+
 module.exports = {
   getReservations: getReservations,
   checkInReservation: checkInReservation,
   updateReservationStatus: updateReservationStatus,
-  assignTableToReservation: assignTableToReservation
+  assignTableToReservation: assignTableToReservation,
+  lookupByPhone: lookupByPhone
 };
