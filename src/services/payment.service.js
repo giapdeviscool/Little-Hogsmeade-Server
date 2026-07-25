@@ -1,5 +1,6 @@
 var paymentRepository = require('../repositories/payment.repository');
 var prisma = require('../lib/prisma');
+var stockDeductionService = require('./stock-deduction.service');
 
 function throwHttpError(statusCode, message) {
   var error = new Error(message);
@@ -93,6 +94,9 @@ async function cashSettle(payload) {
     // Process customer loyalty points
     await processLoyaltyPoints(tx, invoice.order, invoice);
 
+    // Auto deduct stock for MenuItem recipes and Toppings
+    await stockDeductionService.processOrderStockDeduction(invoice.orderId, tx);
+
     return {
       payment: payment,
       change_due: cashChangeDue
@@ -142,6 +146,9 @@ async function bankWebhook(incomingToken, payload) {
 
     // Update loyalty balances
     await processLoyaltyPoints(tx, invoice.order, invoice);
+
+    // Auto deduct stock for MenuItem recipes and Toppings
+    await stockDeductionService.processOrderStockDeduction(invoice.orderId, tx);
 
     // Broadcast socket event
     if (global.io) {
