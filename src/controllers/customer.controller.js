@@ -599,6 +599,24 @@ async function checkPin(req, res, next) {
   }
 }
 
+async function updateProfile(req, res, next) {
+  try {
+    const { customerId, fullName } = req.body;
+    if (!customerId) {
+      return res.status(400).json({ message: 'Customer ID is required' });
+    }
+
+    const updatedCustomer = await prisma.customer.update({
+      where: { id: customerId },
+      data: { fullName }
+    });
+
+    res.json({ success: true, data: updatedCustomer });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   listCustomers: listCustomers,
   getCustomerById: getCustomerById,
@@ -612,6 +630,7 @@ module.exports = {
   updateCustomerMembership: updateCustomerMembership,
   changePin: changePin,
   resetPin: resetPin,
-  checkPin: checkPin
+  checkPin: checkPin,
+  updateProfile: updateProfile
 };
 

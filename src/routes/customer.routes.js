@@ -12,6 +12,7 @@ router.get('/auth/check-phone', customerController.checkPhoneAuth);
 router.post('/auth/login', customerController.customerLogin);
 router.post('/auth/change-pin', customerController.changePin);
 router.post('/auth/check-pin', customerController.checkPin);
+router.put('/auth/profile', customerController.updateProfile);
 router.get('/loyalty/rewards', loyaltyController.getRewards);
 
 // Protected routes
