@@ -1,6 +1,7 @@
 var orderRepository = require('../repositories/order.repository');
 var prisma = require('../lib/prisma');
 var voucherService = require('./voucher.service');
+var stockDeductionService = require('./stock-deduction.service');
 var authMiddleware = require('../middlewares/auth.middleware');
 var socket = require('../realtime/socket');
 
@@ -20,6 +21,13 @@ function throwHttpError(statusCode, message) {
 
 function normalizeNumber(value) {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function calculateLoyaltyPoints(loyaltyConfig, totalAmount) {
+  if (!loyaltyConfig || !loyaltyConfig.spendPerPoint || loyaltyConfig.spendPerPoint <= 0) {
+    return 0;
+  }
+  return Math.floor(totalAmount / loyaltyConfig.spendPerPoint);
 }
 
 function calculateOrderTotals(items, discountAmount, taxAmount) {
@@ -279,6 +287,7 @@ async function updateOrderStatus(id, status) {
 
       if (status === 'paid') {
         await orderRepository.updatePaymentStatusByInvoiceId(invoice.id, 'completed', tx);
+        await stockDeductionService.processOrderStockDeduction(id, tx);
 
         if (order.customerId) {
           if (!invoice.pointsEarned || invoice.pointsEarned === 0) {

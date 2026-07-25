@@ -55,29 +55,6 @@ async function getMenuItems(query, user) {
   var items = await menuItemRepository.findMenuItems(filters);
   var total = items.length;
 
-  /*
-  var processedItems = items.map(function(item) {
-    var isAvailable = item.isActive === true;
-
-    if (isAvailable && item.recipes && item.recipes.length > 0) {
-      for (var i = 0; i < item.recipes.length; i++) {
-        var recipe = item.recipes[i];
-        var requiredAmount = recipe.quantityRequired;
-        var currentStock = recipe.ingredient ? recipe.ingredient.currentStock : 0;
-
-        if (currentStock <= 0 || requiredAmount > currentStock) {
-          isAvailable = false;
-          break;
-        }
-      }
-    }
-
-    var processed = Object.assign({}, item);
-    processed.isAvailable = isAvailable;
-    return processed;
-  });
-  */
-
   var targetBranchId = user.branchId;
   if (query.branchId && query.branchId !== 'global') {
     targetBranchId = query.branchId;

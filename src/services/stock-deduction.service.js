@@ -2,6 +2,15 @@ var prisma = require('../lib/prisma');
 
 async function processOrderStockDeduction(orderId, txClient) {
   var tx = txClient || prisma;
+
+  // Check if stock has already been deducted for this order to prevent double deduction
+  var existingTx = await tx.stockTransaction.findFirst({
+    where: {
+      note: { contains: orderId }
+    }
+  });
+  if (existingTx) return;
+
   var order = await tx.order.findUnique({
     where: { id: orderId },
     include: {
