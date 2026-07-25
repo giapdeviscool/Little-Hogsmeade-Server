@@ -44,11 +44,11 @@ async function getTableLayout(branchId, query, currentUser) {
           };
 
           if (table.status === 'reserved' || table.status === 'occupied') {
-            var activeRes = table.reservations[0];
-            var shouldAttach = activeRes && (table.status === 'reserved' || activeRes.id === table.reservationId);
+            var activeRes = table.reservations.find(function(r) { return r.id === table.reservationId; }) 
+              || (table.status === 'reserved' ? table.reservations[0] : null);
             
-            if (shouldAttach) {
-              result.reservation_id = table.reservationId || activeRes.id;
+            if (activeRes) {
+              result.reservation_id = activeRes.id;
               result.guest_name = result.guest_name || activeRes.guestName;
               result.guest_phone = activeRes.guestPhone;
               result.guest_count = result.guest_count || activeRes.guestCount;

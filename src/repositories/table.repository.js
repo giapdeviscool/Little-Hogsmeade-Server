@@ -58,7 +58,6 @@ function findAreasWithTables(branchId, filters) {
               status: { in: ['pending', 'confirmed', 'reserved', 'checked_in'] }
             },
             orderBy: { reservedDate: 'asc' },
-            take: 1,
             select: { 
               id: true,
               guestName: true,
