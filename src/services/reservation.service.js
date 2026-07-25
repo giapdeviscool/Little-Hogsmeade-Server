@@ -2,7 +2,7 @@ var authMiddleware = require('../middlewares/auth.middleware');
 var prisma = require('../lib/prisma');
 var reservationRepository = require('../repositories/reservation.repository');
 var socket = require('../realtime/socket');
-const orderRepository = require('../repositories/order.repository');
+const crmCustomerRepository = require('../repositories/crm-customer.repository');
 
 var ACTIVE_RESERVATION_STATUSES = ['pending', 'confirmed', 'reserved', 'checked_in'];
 
@@ -215,12 +215,12 @@ async function findOrCreateReservationCustomer(tx, phone, fullName) {
   var normalizedPhone = normalizeRequiredString(phone, 'guestPhone');
   var normalizedName = normalizeRequiredString(fullName, 'guestName');
 
-  var customer = await orderRepository.findCusomterByPhone(normalizedPhone, tx);
+  var customer = await crmCustomerRepository.findCusomterByPhone(normalizedPhone, tx);
   if (customer) {
     return customer;
   }
 
-  return orderRepository.createCustomer({
+  return crmCustomerRepository.createCustomer({
     phone: normalizedPhone,
     fullName: normalizedName,
     source: 'online-reservation'

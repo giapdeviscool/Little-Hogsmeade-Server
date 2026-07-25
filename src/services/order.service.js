@@ -1,4 +1,8 @@
 var orderRepository = require('../repositories/order.repository');
+var orderItemRepository = require('../repositories/order-item.repository');
+var invoiceRepository = require('../repositories/invoice.repository');
+var paymentRepository = require('../repositories/payment.repository');
+var loyaltyRepository = require('../repositories/loyalty.repository');
 var prisma = require('../lib/prisma');
 var voucherService = require('./voucher.service');
 var stockDeductionService = require('./stock-deduction.service');
@@ -155,7 +159,7 @@ async function createOrder(branchId, employeeId, payload) {
         ? item.subtotal
         : item.unitPrice * item.quantity;
 
-      var orderItem = await orderRepository.createOrderItem({
+      var orderItem = await orderItemRepository.createOrderItem({
         orderId: order.id,
         menuItemId: item.menuItemId,
         unitPrice: item.unitPrice,
@@ -169,7 +173,7 @@ async function createOrder(branchId, employeeId, payload) {
         for (var j = 0; j < item.toppings.length; j += 1) {
           var topping = item.toppings[j];
 
-          await orderRepository.createOrderItemTopping({
+          await orderItemRepository.createOrderItemTopping({
             orderItemId: orderItem.id,
             toppingId: topping.toppingId,
             quantity: topping.quantity,
@@ -198,7 +202,7 @@ async function createOrder(branchId, employeeId, payload) {
     }
 
 
-    var invoice = await orderRepository.createInvoice({
+    var invoice = await invoiceRepository.createInvoice({
       orderId: order.id,
       subtotal: totals.subtotal,
       discountAmount: totals.discountAmount,
@@ -280,18 +284,18 @@ async function updateOrderStatus(id, status) {
     }
 
     var updatedOrder = await orderRepository.updateOrderStatus(id, status, tx);
-    var invoice = await orderRepository.findInvoiceByOrderId(id, tx);
+    var invoice = await invoiceRepository.findInvoiceByOrderId(id, tx);
 
     if (invoice) {
-      await orderRepository.updateInvoiceStatusByOrderId(id, status, tx);
+      await invoiceRepository.updateInvoiceStatusByOrderId(id, status, tx);
 
       if (status === 'paid') {
-        await orderRepository.updatePaymentStatusByInvoiceId(invoice.id, 'completed', tx);
+        await paymentRepository.updatePaymentStatusByInvoiceId(invoice.id, 'completed', tx);
         await stockDeductionService.processOrderStockDeduction(id, tx);
 
         if (order.customerId) {
           if (!invoice.pointsEarned || invoice.pointsEarned === 0) {
-            var loyaltyConfig = await orderRepository.findLoyaltyConfigByBranch(order.branchId, tx);
+            var loyaltyConfig = await loyaltyRepository.findLoyaltyConfigByBranch(order.branchId, tx);
             var pointsEarned = calculateLoyaltyPoints(
               loyaltyConfig,
               invoice.totalAmount,
@@ -299,11 +303,11 @@ async function updateOrderStatus(id, status) {
             );
 
             if (pointsEarned !== null && pointsEarned > 0) {
-              invoice = await orderRepository.updateInvoice(invoice.id, {
+              invoice = await invoiceRepository.updateInvoice(invoice.id, {
                 pointsEarned: pointsEarned
               }, tx);
 
-              var membership = await orderRepository.findCustomerMembershipByCustomerId(order.customerId, tx);
+              var membership = await loyaltyRepository.findCustomerMembershipByCustomerId(order.customerId, tx);
 
               if (!membership) {
                 var defaultTier = await tx.membershipTier.findFirst({
@@ -312,7 +316,7 @@ async function updateOrderStatus(id, status) {
                 if (!defaultTier) {
                   throwHttpError(500, 'Default membership tier (minPoints: 0) not found in system');
                 }
-                membership = await orderRepository.createCustomerMembership({
+                membership = await loyaltyRepository.createCustomerMembership({
                   customerId: order.customerId,
                   tierId: defaultTier.id,
                   totalPoints: 0,
@@ -320,12 +324,12 @@ async function updateOrderStatus(id, status) {
                 }, tx);
               }
 
-              var updatedMembership = await orderRepository.updateCustomerMembership(membership.id, {
+              var updatedMembership = await loyaltyRepository.updateCustomerMembership(membership.id, {
                 totalPoints: membership.totalPoints + pointsEarned,
                 totalSpent: membership.totalSpent + invoice.totalAmount
               }, tx);
 
-              await orderRepository.createPointTransaction({
+              await loyaltyRepository.createPointTransaction({
                 customerMembershipId: updatedMembership.id,
                 orderId: id,
                 type: 'earn',
@@ -339,20 +343,20 @@ async function updateOrderStatus(id, status) {
 
       if (status === 'cancelled' || status === 'refunded') {
         var paymentStatus = status === 'cancelled' ? 'failed' : 'refunded';
-        await orderRepository.updatePaymentStatusByInvoiceId(invoice.id, paymentStatus, tx);
+        await paymentRepository.updatePaymentStatusByInvoiceId(invoice.id, paymentStatus, tx);
 
         if (invoice.pointsEarned > 0 && order.customerId) {
-          var membership = await orderRepository.findCustomerMembershipByCustomerId(order.customerId, tx);
+          var membership = await loyaltyRepository.findCustomerMembershipByCustomerId(order.customerId, tx);
           if (membership) {
             var adjustedPoints = Math.min(membership.totalPoints, invoice.pointsEarned);
             var adjustedSpent = Math.min(membership.totalSpent, invoice.totalAmount);
 
-            await orderRepository.updateCustomerMembership(membership.id, {
+            await loyaltyRepository.updateCustomerMembership(membership.id, {
               totalPoints: membership.totalPoints - adjustedPoints,
               totalSpent: membership.totalSpent - adjustedSpent
             }, tx);
 
-            await orderRepository.createPointTransaction({
+            await loyaltyRepository.createPointTransaction({
               customerMembershipId: membership.id,
               orderId: id,
               type: 'adjust',
@@ -393,7 +397,7 @@ async function addOrderItems(orderId, items, currentUser) {
       var itemSubtotal = item.subtotal !== undefined
         ? item.subtotal
         : item.unitPrice * item.quantity;
-      var orderItem = await orderRepository.createOrderItem({
+      var orderItem = await orderItemRepository.createOrderItem({
         orderId: order.id,
         menuItemId: item.menuItemId,
         unitPrice: item.unitPrice,
@@ -406,7 +410,7 @@ async function addOrderItems(orderId, items, currentUser) {
       if (Array.isArray(item.toppings)) {
         for (var j = 0; j < item.toppings.length; j += 1) {
           var topping = item.toppings[j];
-          await orderRepository.createOrderItemTopping({
+          await orderItemRepository.createOrderItemTopping({
             orderItemId: orderItem.id,
             toppingId: topping.toppingId,
             quantity: topping.quantity,
@@ -416,7 +420,7 @@ async function addOrderItems(orderId, items, currentUser) {
       }
     }
 
-    var invoice = await orderRepository.findInvoiceByOrderId(order.id, tx);
+    var invoice = await invoiceRepository.findInvoiceByOrderId(order.id, tx);
     var updatedInvoice = null;
 
     if (invoice) {
@@ -424,11 +428,11 @@ async function addOrderItems(orderId, items, currentUser) {
       var newSubtotal = invoice.subtotal + addedTotals.subtotal;
       var newTotalAmount = Math.max(0, newSubtotal - invoice.discountAmount + invoice.taxAmount);
 
-      updatedInvoice = await orderRepository.updateInvoice(invoice.id, {
+      updatedInvoice = await invoiceRepository.updateInvoice(invoice.id, {
         subtotal: newSubtotal,
         totalAmount: newTotalAmount
       }, tx);
-      await orderRepository.updatePaymentAmountByInvoiceId(invoice.id, newTotalAmount, tx);
+      await paymentRepository.updatePaymentAmountByInvoiceId(invoice.id, newTotalAmount, tx);
     }
 
     return {
@@ -575,24 +579,24 @@ async function deleteOrder(id) {
       throwHttpError(404, 'Order not found');
     }
 
-    var invoice = await orderRepository.findInvoiceByOrderId(id, tx);
+    var invoice = await invoiceRepository.findInvoiceByOrderId(id, tx);
 
     if (invoice) {
-      await orderRepository.deletePointTransactionsByOrderId(id, tx);
-      await orderRepository.deletePaymentsByInvoiceId(invoice.id, tx);
-      await orderRepository.deleteInvoiceByOrderId(id, tx);
+      await loyaltyRepository.deletePointTransactionsByOrderId(id, tx);
+      await paymentRepository.deletePaymentsByInvoiceId(invoice.id, tx);
+      await invoiceRepository.deleteInvoiceByOrderId(id, tx);
     }
 
-    var orderItems = await orderRepository.findOrderItemsByOrderId(id, tx);
+    var orderItems = await orderItemRepository.findOrderItemsByOrderId(id, tx);
     var orderItemIds = orderItems.map(function (item) {
       return item.id;
     });
 
     if (orderItemIds.length > 0) {
-      await orderRepository.deleteOrderItemToppingsByOrderItemIds(orderItemIds, tx);
+      await orderItemRepository.deleteOrderItemToppingsByOrderItemIds(orderItemIds, tx);
     }
 
-    await orderRepository.deleteOrderItemsByOrderId(id, tx);
+    await orderItemRepository.deleteOrderItemsByOrderId(id, tx);
     await orderRepository.deleteOrderById(id, tx);
 
     return {

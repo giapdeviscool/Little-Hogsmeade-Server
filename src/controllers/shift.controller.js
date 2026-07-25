@@ -1,6 +1,6 @@
 var shiftService = require('../services/shift.service');
 var prisma = require('../lib/prisma');
-var orderRepository = require('../repositories/order.repository');
+var cashierShiftRepository = require('../repositories/cashier-shift.repository');
 var { verifySync } = require('otplib');
 
 async function getShifts(req, res, next) {
@@ -263,7 +263,7 @@ async function getReconciliation(req, res, next) {
       return res.status(404).json({ error: 'Cashier shift not found' });
     }
 
-    var aggregation = await orderRepository.calculateCashRevenueForShift(shift.branchId);
+    var aggregation = await cashierShiftRepository.calculateCashRevenueForShift(shift.branchId);
 
     const totalInvoices = await prisma.invoice.count({
       where: {

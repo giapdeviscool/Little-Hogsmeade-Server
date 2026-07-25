@@ -134,6 +134,22 @@ function findCustomerOrdersSummary(customerId) {
   });
 }
 
+function getDb(tx) {
+  return tx || prisma;
+}
+
+function findCusomterByPhone(phone, tx) {
+  return getDb(tx).customer.findUnique({
+    where: { phone: phone }
+  });
+}
+
+function createCustomer(data, tx) {
+  return getDb(tx).customer.create({
+    data: data
+  });
+}
+
 module.exports = {
   findCustomers: findCustomers,
   findCustomersForSort: findCustomersForSort,
@@ -144,5 +160,7 @@ module.exports = {
   countCustomerOrders: countCustomerOrders,
   findCustomerPointTransactions: findCustomerPointTransactions,
   countCustomerPointTransactions: countCustomerPointTransactions,
-  findCustomerOrdersSummary: findCustomerOrdersSummary
+  findCustomerOrdersSummary: findCustomerOrdersSummary,
+  findCusomterByPhone: findCusomterByPhone,
+  createCustomer: createCustomer
 };
