@@ -29,7 +29,14 @@ async function getRewards(user, query) {
   };
 
   if (branchId !== undefined) {
-    filters.branchId = branchId;
+    if (branchId === null) {
+      filters.branchId = null;
+    } else {
+      filters.OR = [
+        { branchId: branchId },
+        { branchId: null }
+      ];
+    }
   }
 
   if (query && query.search) {
