@@ -8,9 +8,10 @@ function count(where) {
   return prisma.event.count({ where: where || {} });
 }
 
-function findById(id) {
+function findById(id, options) {
   return prisma.event.findUnique({
     where: { id: id },
+    ...(options || {}),
   });
 }
 

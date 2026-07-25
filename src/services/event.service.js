@@ -32,6 +32,7 @@ async function getEvents(query) {
     skip: skip,
     take: limit,
     orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
+    include: { branch: true },
   });
   var total = await eventRepository.count(where);
 
@@ -49,7 +50,7 @@ async function getEvents(query) {
 async function getEventById(id) {
   assertValidObjectId(id, "event id");
 
-  var event = await eventRepository.findById(id);
+  var event = await eventRepository.findById(id, { include: { branch: true } });
   if (!event) {
     throwHttpError(404, "Event not found");
   }

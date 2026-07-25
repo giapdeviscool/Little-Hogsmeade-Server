@@ -3,7 +3,8 @@ var prisma = new PrismaClient();
 
 async function validateVoucher(code, orderSubtotal, customerId, branchId) {
   var voucher = await prisma.voucher.findUnique({
-    where: { code: code }
+    where: { code: code },
+    include: { loyaltyReward: true }
   });
 
   if (!voucher) {
@@ -57,10 +58,23 @@ async function validateVoucher(code, orderSubtotal, customerId, branchId) {
     discountAmount = orderSubtotal;
   }
 
+  var giftProduct = null;
+  if (voucher.discountType === 'gift' && voucher.loyaltyReward && voucher.loyaltyReward.productId) {
+    giftProduct = await prisma.menuItem.findUnique({
+      where: { id: voucher.loyaltyReward.productId },
+      include: {
+        menuItemVariants: true,
+        menuItemToppingGroups: { include: { toppingGroup: { include: { toppings: true } } } }
+      }
+    });
+  }
+
   return {
     isValid: true,
     voucher: voucher,
-    discountAmount: discountAmount
+    discountAmount: discountAmount,
+    giftProductId: voucher.discountType === 'gift' ? (voucher.loyaltyReward ? voucher.loyaltyReward.productId : null) : null,
+    giftProduct: giftProduct
   };
 }
 
