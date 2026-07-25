@@ -55,20 +55,62 @@ async function toggleBranchStatus(id) {
   var branch = await getBranchOrThrow(id);
 
   if (branch.status === 'active') {
-    var pendingOrders = await branchRepository.hasPendingOrders(id);
-    if (pendingOrders > 0) {
-      throwHttpError(400, 'Cannot deactivate branch with pending orders');
+    // Kiểm tra đồng thời tất cả ràng buộc
+    var [activeEmployees, openShifts, pendingOrders, reservedTables] = await Promise.all([
+      branchRepository.countActiveEmployees(id),
+      branchRepository.countOpenCashierShifts(id),
+      branchRepository.hasPendingOrders(id),
+      branchRepository.hasReservedTables(id)
+    ]);
+
+    if (activeEmployees > 0) {
+      throwHttpError(400, 'Còn ' + activeEmployees + ' nhân viên đang hoạt động. Không thể vô hiệu hóa chi nhánh.');
     }
 
-    var reservedTables = await branchRepository.hasReservedTables(id);
+    if (openShifts > 0) {
+      throwHttpError(400, 'Còn ' + openShifts + ' ca thu ngân đang mở. Không thể vô hiệu hóa chi nhánh.');
+    }
+
+    if (pendingOrders > 0) {
+      throwHttpError(400, 'Còn ' + pendingOrders + ' đơn hàng đang chờ xử lý. Không thể vô hiệu hóa chi nhánh.');
+    }
+
     if (reservedTables > 0) {
-      throwHttpError(400, 'Cannot deactivate branch with reserved tables');
+      throwHttpError(400, 'Còn ' + reservedTables + ' bàn đã đặt trước. Không thể vô hiệu hóa chi nhánh.');
     }
 
     return branchRepository.update(id, { status: 'inactive' });
   }
 
   return branchRepository.update(id, { status: 'active' });
+}
+
+async function checkInactiveConstraints(id) {
+  assertValidObjectId(id, 'branch id');
+  var branch = await getBranchOrThrow(id);
+
+  if (branch.status !== 'active') {
+    return { canToggle: true, reasons: [], warnings: [] };
+  }
+
+  var results = await Promise.all([
+    branchRepository.countActiveEmployees(id),
+    branchRepository.countOpenCashierShifts(id),
+    branchRepository.hasPendingOrders(id),
+    branchRepository.hasReservedTables(id)
+  ]);
+
+  var reasons = [];
+  if (results[0] > 0) reasons.push(results[0] + ' nhân viên đang hoạt động');
+  if (results[1] > 0) reasons.push(results[1] + ' ca thu ngân đang mở');
+  if (results[2] > 0) reasons.push(results[2] + ' đơn hàng đang chờ xử lý');
+  if (results[3] > 0) reasons.push(results[3] + ' bàn đã đặt trước');
+
+  return {
+    canToggle: reasons.length === 0,
+    reasons: reasons,
+    warnings: []
+  };
 }
 
 async function getBranchOrThrow(id) {
@@ -106,10 +148,6 @@ function normalizeBranchPayload(payload, isCreate) {
     data.status = normalizeStatus(payload.status);
   }
 
-  if (payload.allowLocalPricingOverride !== undefined) {
-    data.allowLocalPricingOverride = Boolean(payload.allowLocalPricingOverride);
-  }
-
   return data;
 }
 
@@ -118,96 +156,63 @@ function assignRequiredString(data, payload, field, isRequired) {
     if (isRequired) {
       throwHttpError(400, field + ' is required');
     }
-
     return;
   }
-
   if (typeof payload[field] !== 'string' || payload[field].trim() === '') {
     throwHttpError(400, field + ' must be a non-empty string');
   }
-
   data[field] = payload[field].trim();
 }
 
 function assignOptionalString(data, payload, field) {
-  if (payload[field] === undefined) {
-    return;
-  }
-
+  if (payload[field] === undefined) return;
   if (payload[field] === null || payload[field] === '') {
     data[field] = null;
     return;
   }
-
   if (typeof payload[field] !== 'string') {
     throwHttpError(400, field + ' must be a string');
   }
-
   data[field] = payload[field].trim();
 }
 
 function assignRequiredNumber(data, payload, field, isRequired) {
   if (payload[field] === undefined) {
-    if (isRequired) {
-      throwHttpError(400, field + ' is required');
-    }
-
+    if (isRequired) throwHttpError(400, field + ' is required');
     return;
   }
-
   var value = Number(payload[field]);
-
-  if (!Number.isFinite(value)) {
-    throwHttpError(400, field + ' must be a number');
-  }
-
+  if (!Number.isFinite(value)) throwHttpError(400, field + ' must be a number');
   data[field] = value;
 }
 
 function assignRequiredDate(data, payload, field, isRequired) {
   if (payload[field] === undefined) {
-    if (isRequired) {
-      throwHttpError(400, field + ' is required');
-    }
-
+    if (isRequired) throwHttpError(400, field + ' is required');
     return;
   }
-
   var date = parseDate(payload[field], field);
   data[field] = date;
 }
 
 function normalizeStatus(status) {
   var normalized = String(status).trim().toLowerCase();
-
   if (normalized !== 'active' && normalized !== 'inactive') {
     throwHttpError(400, 'status must be active or inactive');
   }
-
   return normalized;
 }
 
 function parsePositiveInt(value, fallback) {
-  if (value === undefined || value === null || value === '') {
-    return fallback;
-  }
-
+  if (value === undefined || value === null || value === '') return fallback;
   var number = Number(value);
-
-  if (!Number.isInteger(number) || number < 1) {
-    throwHttpError(400, 'Query value must be a positive integer');
-  }
-
+  if (!Number.isInteger(number) || number < 1) throwHttpError(400, 'Query value must be a positive integer');
   return number;
 }
 
 function parseDate(value, field) {
   var date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    throwHttpError(400, field + ' must be a valid date');
-  }
-
+  if (Number.isNaN(date.getTime())) throwHttpError(400, field + ' must be a valid date');
   return date;
 }
 
@@ -227,5 +232,6 @@ module.exports = {
   getBranches: getBranches,
   createBranch: createBranch,
   updateBranch: updateBranch,
-  toggleBranchStatus: toggleBranchStatus
+  toggleBranchStatus: toggleBranchStatus,
+  checkInactiveConstraints: checkInactiveConstraints
 };

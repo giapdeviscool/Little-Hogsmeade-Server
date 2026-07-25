@@ -87,7 +87,7 @@ async function createIngredient(data, user) {
 
   if (branchId === null) {
     var prisma = require('../lib/prisma');
-    var branches = await prisma.branch.findMany({ select: { id: true } });
+    var branches = await prisma.branch.findMany({ where: { status: 'active' }, select: { id: true } });
     var localCopies = branches.map(function(b) {
       return {
         name: newIngredient.name,
@@ -210,7 +210,7 @@ async function updateIngredient(id, data, user) {
   // Handle scope transition Specific -> Global
   if (existing.branchId !== null && updateData.branchId === null) {
     var prisma = require('../lib/prisma');
-    var branches = await prisma.branch.findMany({ select: { id: true } });
+    var branches = await prisma.branch.findMany({ where: { status: 'active' }, select: { id: true } });
     var localCopies = branches.map(function(b) {
       return {
         name: updated.name,

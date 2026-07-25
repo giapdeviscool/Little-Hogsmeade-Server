@@ -55,6 +55,18 @@ function hasReservedTables(branchId) {
   });
 }
 
+function countActiveEmployees(branchId) {
+  return prisma.employee.count({
+    where: { branchId: branchId, status: 'active' }
+  });
+}
+
+function countOpenCashierShifts(branchId) {
+  return prisma.cashierShift.count({
+    where: { branchId: branchId, status: 'OPEN' }
+  });
+}
+
 module.exports = {
   findAll: findAll,
   count: count,
@@ -63,5 +75,7 @@ module.exports = {
   create: create,
   update: update,
   hasPendingOrders: hasPendingOrders,
-  hasReservedTables: hasReservedTables
+  hasReservedTables: hasReservedTables,
+  countActiveEmployees: countActiveEmployees,
+  countOpenCashierShifts: countOpenCashierShifts
 };

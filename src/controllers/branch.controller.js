@@ -36,9 +36,19 @@ async function toggleBranchStatus(req, res, next) {
   }
 }
 
+async function checkInactiveConstraints(req, res, next) {
+  try {
+    var result = await branchService.checkInactiveConstraints(req.params.id);
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getBranches: getBranches,
   createBranch: createBranch,
   updateBranch: updateBranch,
-  toggleBranchStatus: toggleBranchStatus
+  toggleBranchStatus: toggleBranchStatus,
+  checkInactiveConstraints: checkInactiveConstraints
 };
