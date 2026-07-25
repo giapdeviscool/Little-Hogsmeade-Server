@@ -114,8 +114,8 @@ async function findInvoices(filters, skip, limit, sortBy, sortOrder) {
   };
 }
 
-function findInvoiceById(id) {
-  return prisma.invoice.findUnique({
+function findInvoiceById(id, tx) {
+  return getDb(tx).invoice.findUnique({
     where: { id: id },
     include: {
       payments: true,
@@ -231,8 +231,65 @@ async function findAdminInvoices(filters, skip, limit) {
   };
 }
 
+function getDb(tx) {
+  return tx || prisma;
+}
+
+function createInvoice(data, tx) {
+  return getDb(tx).invoice.create({
+    data: data
+  });
+}
+
+function updateInvoice(id, data, tx) {
+  return getDb(tx).invoice.update({
+    where: { id: id },
+    data: data
+  });
+}
+
+function findInvoiceByOrderId(orderId, tx) {
+  return getDb(tx).invoice.findFirst({
+    where: { orderId: orderId }
+  });
+}
+
+function updateInvoiceStatusByOrderId(orderId, status, tx) {
+  return getDb(tx).invoice.update({
+    where: { orderId: orderId },
+    data: { status: status }
+  });
+}
+
+function deleteInvoiceByOrderId(orderId, tx) {
+  return getDb(tx).invoice.deleteMany({
+    where: { orderId: orderId }
+  });
+}
+
+function updateInvoiceStatus(id, status, tx) {
+  return getDb(tx).invoice.update({
+    where: { id: id },
+    data: { status: status }
+  });
+}
+
+function updateInvoicePoints(id, pointsEarned, tx) {
+  return getDb(tx).invoice.update({
+    where: { id: id },
+    data: { pointsEarned: pointsEarned }
+  });
+}
+
 module.exports = {
   findInvoices: findInvoices,
   findInvoiceById: findInvoiceById,
-  findAdminInvoices: findAdminInvoices
+  findAdminInvoices: findAdminInvoices,
+  createInvoice: createInvoice,
+  updateInvoice: updateInvoice,
+  updateInvoiceStatus: updateInvoiceStatus,
+  updateInvoicePoints: updateInvoicePoints,
+  findInvoiceByOrderId: findInvoiceByOrderId,
+  updateInvoiceStatusByOrderId: updateInvoiceStatusByOrderId,
+  deleteInvoiceByOrderId: deleteInvoiceByOrderId
 };

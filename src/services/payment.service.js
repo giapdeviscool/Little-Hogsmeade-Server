@@ -1,4 +1,8 @@
 var paymentRepository = require('../repositories/payment.repository');
+var invoiceRepository = require('../repositories/invoice.repository');
+var orderRepository = require('../repositories/order.repository');
+var cashierShiftRepository = require('../repositories/cashier-shift.repository');
+var loyaltyRepository = require('../repositories/loyalty.repository');
 var prisma = require('../lib/prisma');
 var stockDeductionService = require('./stock-deduction.service');
 
@@ -16,7 +20,7 @@ async function createQrIntent(payload) {
     throwHttpError(400, 'Invalid invoice_id or amount');
   }
 
-  var invoice = await paymentRepository.findInvoiceById(invoiceId);
+  var invoice = await invoiceRepository.findInvoiceById(invoiceId);
   if (!invoice) {
     throwHttpError(404, 'Invoice not found');
   }
@@ -60,7 +64,7 @@ async function cashSettle(payload) {
   }
 
   return prisma.$transaction(async function(tx) {
-    var invoice = await paymentRepository.findInvoiceById(invoiceId, tx);
+    var invoice = await invoiceRepository.findInvoiceById(invoiceId, tx);
     if (!invoice) {
       throwHttpError(404, 'Invoice not found');
     }
@@ -82,13 +86,13 @@ async function cashSettle(payload) {
     }, tx);
 
     // Update invoice & order status
-    await paymentRepository.updateInvoiceStatus(invoiceId, 'paid', tx);
-    await paymentRepository.updateOrderStatus(invoice.orderId, 'paid', tx);
+    await invoiceRepository.updateInvoiceStatus(invoiceId, 'paid', tx);
+    await orderRepository.updateOrderStatus(invoice.orderId, 'paid', tx);
 
     // Execute Live Ledger Tracking: Increment cashier shift expected cash
-    var activeShift = await paymentRepository.findActiveShiftByBranch(invoice.order.branchId, tx);
+    var activeShift = await cashierShiftRepository.findActiveCashierShiftByBranch(invoice.order.branchId, tx);
     if (activeShift) {
-      await paymentRepository.incrementShiftExpectedCash(activeShift.id, invoice.totalAmount, tx);
+      await cashierShiftRepository.incrementShiftExpectedCash(activeShift.id, invoice.totalAmount, tx);
     }
 
     // Process customer loyalty points
@@ -141,8 +145,8 @@ async function bankWebhook(incomingToken, payload) {
   return prisma.$transaction(async function(tx) {
     // Switch statuses to success/paid
     var updatedPayment = await paymentRepository.updatePaymentStatus(pendingPayment.id, 'success', new Date(), tx);
-    await paymentRepository.updateInvoiceStatus(invoice.id, 'paid', tx);
-    await paymentRepository.updateOrderStatus(invoice.orderId, 'paid', tx);
+    await invoiceRepository.updateInvoiceStatus(invoice.id, 'paid', tx);
+    await orderRepository.updateOrderStatus(invoice.orderId, 'paid', tx);
 
     // Update loyalty balances
     await processLoyaltyPoints(tx, invoice.order, invoice);
@@ -169,13 +173,13 @@ async function bankWebhook(incomingToken, payload) {
 async function processLoyaltyPoints(tx, order, invoice) {
   if (!order.customerId) return;
 
-  var loyaltyConfig = await paymentRepository.findLoyaltyConfigByBranch(order.branchId, tx);
+  var loyaltyConfig = await loyaltyRepository.findLoyaltyConfigByBranch(order.branchId, tx);
   if (loyaltyConfig && loyaltyConfig.spendPerPoint > 0) {
     var pointsEarned = Math.floor(invoice.totalAmount / loyaltyConfig.spendPerPoint);
 
-    await paymentRepository.updateInvoicePoints(invoice.id, pointsEarned, tx);
+    await invoiceRepository.updateInvoicePoints(invoice.id, pointsEarned, tx);
 
-    var membership = await paymentRepository.findCustomerMembershipByCustomerId(order.customerId, tx);
+    var membership = await loyaltyRepository.findCustomerMembershipByCustomerId(order.customerId, tx);
     if (!membership) {
       var defaultTier = await tx.membershipTier.findFirst({
         where: { minPoints: 0 }
@@ -183,7 +187,7 @@ async function processLoyaltyPoints(tx, order, invoice) {
       if (!defaultTier) {
         throwHttpError(500, 'Default membership tier (minPoints: 0) not found in system');
       }
-      membership = await paymentRepository.createCustomerMembership({
+      membership = await loyaltyRepository.createCustomerMembership({
         customerId: order.customerId,
         tierId: defaultTier.id,
         totalPoints: 0,
@@ -191,12 +195,12 @@ async function processLoyaltyPoints(tx, order, invoice) {
       }, tx);
     }
 
-    var updatedMembership = await paymentRepository.updateCustomerMembership(membership.id, {
+    var updatedMembership = await loyaltyRepository.updateCustomerMembership(membership.id, {
       totalPoints: membership.totalPoints + pointsEarned,
       totalSpent: membership.totalSpent + invoice.totalAmount
     }, tx);
 
-    await paymentRepository.createPointTransaction({
+    await loyaltyRepository.createPointTransaction({
       customerMembershipId: updatedMembership.id,
       orderId: order.id,
       type: 'earn',

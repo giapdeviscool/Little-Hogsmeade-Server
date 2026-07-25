@@ -77,76 +77,6 @@ function createOrder(data, tx) {
   });
 }
 
-function createOrderItem(data, tx) {
-  return getDb(tx).orderItem.create({
-    data: data
-  });
-}
-
-function createOrderItemTopping(data, tx) {
-  return getDb(tx).orderItemTopping.create({
-    data: data
-  });
-}
-
-function createInvoice(data, tx) {
-  return getDb(tx).invoice.create({
-    data: data
-  });
-}
-
-function createPayment(data, tx) {
-  return getDb(tx).payment.create({
-    data: data
-  });
-}
-
-function findLoyaltyConfigByBranch(branchId, tx) {
-  return getDb(tx).loyaltyConfig.findFirst({
-    where: {
-      branchId: branchId,
-      isActive: true
-    }
-  });
-}
-
-function findCustomerMembershipByCustomerId(customerId, tx) {
-  if (!customerId) {
-    return null;
-  }
-  return getDb(tx).customerMembership.findFirst({
-    where: {
-      customerId: customerId
-    }
-  });
-}
-
-function createCustomerMembership(data, tx) {
-  return getDb(tx).customerMembership.create({
-    data: data
-  });
-}
-
-function updateCustomerMembership(id, data, tx) {
-  return getDb(tx).customerMembership.update({
-    where: { id: id },
-    data: data
-  });
-}
-
-function updateInvoice(id, data, tx) {
-  return getDb(tx).invoice.update({
-    where: { id: id },
-    data: data
-  });
-}
-
-function createPointTransaction(data, tx) {
-  return getDb(tx).pointTransaction.create({
-    data: data
-  });
-}
-
 function findOrderById(id, tx) {
   return getDb(tx).order.findUnique({
     where: { id: id }
@@ -157,69 +87,6 @@ function updateOrderStatus(id, status, tx) {
   return getDb(tx).order.update({
     where: { id: id },
     data: { status: status }
-  });
-}
-
-function findInvoiceByOrderId(orderId, tx) {
-  return getDb(tx).invoice.findFirst({
-    where: { orderId: orderId }
-  });
-}
-
-function updateInvoiceStatusByOrderId(orderId, status, tx) {
-  return getDb(tx).invoice.update({
-    where: { orderId: orderId },
-    data: { status: status }
-  });
-}
-
-function updatePaymentStatusByInvoiceId(invoiceId, status, tx) {
-  return getDb(tx).payment.updateMany({
-    where: { invoiceId: invoiceId },
-    data: { status: status }
-  });
-}
-
-function updatePaymentAmountByInvoiceId(invoiceId, amount, tx) {
-  return getDb(tx).payment.updateMany({
-    where: { invoiceId: invoiceId },
-    data: { amount: amount }
-  });
-}
-
-function findOrderItemsByOrderId(orderId, tx) {
-  return getDb(tx).orderItem.findMany({
-    where: { orderId: orderId }
-  });
-}
-
-function deleteOrderItemToppingsByOrderItemIds(orderItemIds, tx) {
-  return getDb(tx).orderItemTopping.deleteMany({
-    where: { orderItemId: { in: orderItemIds } }
-  });
-}
-
-function deleteOrderItemsByOrderId(orderId, tx) {
-  return getDb(tx).orderItem.deleteMany({
-    where: { orderId: orderId }
-  });
-}
-
-function deletePointTransactionsByOrderId(orderId, tx) {
-  return getDb(tx).pointTransaction.deleteMany({
-    where: { orderId: orderId }
-  });
-}
-
-function deletePaymentsByInvoiceId(invoiceId, tx) {
-  return getDb(tx).payment.deleteMany({
-    where: { invoiceId: invoiceId }
-  });
-}
-
-function deleteInvoiceByOrderId(orderId, tx) {
-  return getDb(tx).invoice.deleteMany({
-    where: { orderId: orderId }
   });
 }
 
@@ -245,84 +112,10 @@ async function countPendingOrdersForBranch(branchId, tx) {
   return count;
 }
 
-async function calculateCashRevenueForShift(branchId, tx) {
-  var db = getDb(tx);
-  var invoices = await db.invoice.findMany({
-    where: {
-      order: {
-        branchId: branchId
-      },
-      status: 'paid'
-    },
-    include: {
-      payments: true,
-      order: true
-    }
-  });
-
-  var cashSales = 0;
-  var cashRefunds = 0;
-
-  for (var i = 0; i < invoices.length; i++) {
-    var invoice = invoices[i];
-
-    for (var j = 0; j < invoice.payments.length; j++) {
-      var payment = invoice.payments[j];
-      if (payment.method === 'cash') {
-        if (payment.status === 'completed' || payment.status === 'success') {
-          cashSales += payment.amount;
-        } else if (payment.status === 'refunded') {
-          cashRefunds += payment.amount;
-        }
-      }
-    }
-  }
-
-  return {
-    cashSales: cashSales,
-    cashRefunds: cashRefunds
-  };
-}
-
-function findCusomterByPhone(phone, tx) {
-  return getDb(tx).customer.findUnique({
-    where: { phone: phone }
-  });
-}
-
-function createCustomer(data, tx) {
-  return getDb(tx).customer.create({
-    data: data
-  });
-}
-
 module.exports = {
   createOrder: createOrder,
-  createOrderItem: createOrderItem,
-  createOrderItemTopping: createOrderItemTopping,
-  createInvoice: createInvoice,
-  createPayment: createPayment,
-  findLoyaltyConfigByBranch: findLoyaltyConfigByBranch,
-  findCustomerMembershipByCustomerId: findCustomerMembershipByCustomerId,
-  createCustomerMembership: createCustomerMembership,
-  updateCustomerMembership: updateCustomerMembership,
-  updateInvoice: updateInvoice,
-  createPointTransaction: createPointTransaction,
   findOrderById: findOrderById,
   updateOrderStatus: updateOrderStatus,
-  findInvoiceByOrderId: findInvoiceByOrderId,
-  updateInvoiceStatusByOrderId: updateInvoiceStatusByOrderId,
-  updatePaymentStatusByInvoiceId: updatePaymentStatusByInvoiceId,
-  updatePaymentAmountByInvoiceId: updatePaymentAmountByInvoiceId,
-  findOrderItemsByOrderId: findOrderItemsByOrderId,
-  deleteOrderItemToppingsByOrderItemIds: deleteOrderItemToppingsByOrderItemIds,
-  deleteOrderItemsByOrderId: deleteOrderItemsByOrderId,
-  deletePointTransactionsByOrderId: deletePointTransactionsByOrderId,
-  deletePaymentsByInvoiceId: deletePaymentsByInvoiceId,
-  deleteInvoiceByOrderId: deleteInvoiceByOrderId,
   deleteOrderById: deleteOrderById,
-  findCusomterByPhone: findCusomterByPhone,
-  createCustomer: createCustomer,
-  countPendingOrdersForBranch: countPendingOrdersForBranch,
-  calculateCashRevenueForShift: calculateCashRevenueForShift
+  countPendingOrdersForBranch: countPendingOrdersForBranch
 };
