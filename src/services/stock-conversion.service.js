@@ -61,8 +61,8 @@ class StockConversionService {
           data: {
             branchId,
             ingredientId: req.rawIngredientId,
-            type: 'conversion_out',
-            quantity: -req.requiredStock,
+            type: 'CONVERSION_OUT',
+            quantity: req.requiredStock,
             unitCost: 0, // Placeholder
             totalCost: 0,
             referenceId,
@@ -83,7 +83,7 @@ class StockConversionService {
         data: {
           branchId,
           ingredientId: preparationId,
-          type: 'conversion_in',
+          type: 'CONVERSION_IN',
           quantity: targetYieldQuantity,
           unitCost: 0, // Placeholder for calculated COGS
           totalCost: 0,
