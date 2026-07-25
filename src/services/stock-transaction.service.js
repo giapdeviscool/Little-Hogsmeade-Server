@@ -201,7 +201,7 @@ async function getStockLedger(branchId, ingredientId, startDate, endDate, curren
   var parsedStartDate = new Date(startDate);
   var parsedEndDate = new Date(endDate);
 
-  var additionTypes = ['RECEIPT', 'STOCKTAKE_SURPLUS', 'MANUAL_ADD'];
+  var additionTypes = ['RECEIPT', 'STOCKTAKE_SURPLUS', 'MANUAL_ADD', 'CONVERSION_IN', 'conversion_in'];
 
   // 1. Calculate Starting Balance
   var pastTransactions = await prisma.stockTransaction.findMany({

@@ -16,13 +16,18 @@ async function getRecipes(query, user) {
 
   if (isOwner) {
     if (query.branchId) {
-      filters.menuItem = { branchId: query.branchId };
+      filters.OR = [
+        { menuItem: { branchId: query.branchId } },
+        { ingredient: { branchId: query.branchId } },
+        { menuItem: { branchId: null } }
+      ];
     }
   } else if (isAdmin || isStaff) {
-    // Both Admin and Staff can only see recipes mapped to their branch (or global items if applicable)
-    // Actually, recipes might be tied to specific branch ingredients, but we filter by menu item's branch or ingredient's branch.
-    // Let's filter by ingredient branchId, since recipes use ingredients from the branch.
-    filters.ingredient = { branchId: user.branchId };
+    filters.OR = [
+      { menuItem: { branchId: user.branchId } },
+      { ingredient: { branchId: user.branchId } },
+      { menuItem: { branchId: null } }
+    ];
   } else {
     var errRole = new Error('Không có quyền xem công thức');
     errRole.status = 403;
