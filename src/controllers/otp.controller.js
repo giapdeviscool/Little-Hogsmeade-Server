@@ -19,7 +19,18 @@ async function verify2FA(req, res, next) {
   }
 }
 
+async function get2FAStatus(req, res, next) {
+  try {
+    var targetEmployeeId = req.query.employeeId || null;
+    var result = await otpService.get2FAStatus(req.user.id, targetEmployeeId);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   setup2FA: setup2FA,
   verify2FA: verify2FA,
+  get2FAStatus: get2FAStatus
 };
