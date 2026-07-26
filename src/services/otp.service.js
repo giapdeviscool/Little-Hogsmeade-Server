@@ -86,7 +86,47 @@ async function verify2FA(userId, code) {
   return { success: true };
 }
 
+async function get2FAStatus(userId, targetEmployeeId) {
+  var idToCheck = targetEmployeeId || userId;
+  const employee = await prisma.employee.findUnique({
+    where: { id: idToCheck },
+    select: { id: true, totpSecret: true, branchId: true }
+  });
+
+  if (!employee) {
+    throwHttpError(404, 'Employee not found');
+  }
+
+  var hasPersonalSecret = Boolean(employee.totpSecret);
+
+  var hasBranchAdminSecret = false;
+  if (employee.branchId) {
+    const branchAdmin = await prisma.employee.findFirst({
+      where: {
+        branchId: employee.branchId,
+        totpSecret: { not: null }
+      }
+    });
+    if (branchAdmin) {
+      hasBranchAdminSecret = true;
+    }
+  }
+
+  var hasGlobalAdminSecret = Boolean(process.env.ADMIN_TOTP_SECRET);
+
+  return {
+    employeeId: idToCheck,
+    has2FA: hasPersonalSecret,
+    hasPersonalSecret: hasPersonalSecret,
+    hasBranchAdminSecret: hasBranchAdminSecret,
+    hasGlobalAdminSecret: hasGlobalAdminSecret,
+    is2FAAvailable: hasPersonalSecret || hasBranchAdminSecret || hasGlobalAdminSecret
+  };
+}
+
 module.exports = {
   setup2FA: setup2FA,
-  verify2FA: verify2FA
+  verify2FA: verify2FA,
+  get2FAStatus: get2FAStatus
 };
+

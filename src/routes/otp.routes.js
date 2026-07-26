@@ -9,6 +9,7 @@ var router = express.Router();
 var verifyToken = authMiddleware.authenticate;
 var verifyRole = authMiddleware.verifyRole;
 
+router.get('/status', verifyToken, otpController.get2FAStatus);
 router.get('/setup', verifyToken, verifyRole(['chain_admin']), otpController.setup2FA);
 router.post('/setup', verifyToken, verifyRole(['chain_admin']), otpController.setup2FA);
 router.post('/verify', verifyToken, validate(otpValidator.verifyOtpSchema), otpController.verify2FA);
